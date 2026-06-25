@@ -1,7 +1,7 @@
 # 🐛 Error Log — nf-pangenome-elaise
 
-> File ini untuk mencatat error, bug, dan solusinya selama pengerjaan skripsi.
-> Format: **tanggal | komponen | deskripsi error | status | solusi**
+> Catat **setiap error** di sini lengkap dengan solusinya.
+> Format: tanggal | komponen | error | status | solusi
 
 ---
 
@@ -9,17 +9,17 @@
 
 ```
 ### [YYYY-MM-DD] JUDUL ERROR SINGKAT
-- **Komponen**: nama_module / workflow / tool
+- **Komponen**: nama_module / subworkflow / CLI
 - **Command**:
   ```bash
   nextflow run ...
   ```
 - **Error message**:
   ```
-  paste error disini
+  paste error di sini
   ```
 - **Root Cause**: penjelasan kenapa error
-- **Solusi**: apa yang dilakukan
+- **Solusi**: apa yang dilakukan untuk menyelesaikan
 - **Status**: ✅ Solved / ❌ Unsolved / ⏳ Investigating
 ```
 
@@ -27,19 +27,19 @@
 
 ## 🔴 Open Issues
 
-### [2026-06-26] WFMASH: Process requirement exceeds available CPUs
-- **Komponen**: `modules/local/alignment/wfmash.nf` — label `process_high`
+### [2026-06-26] Stub run — WFMASH CPU limit (sudah diganti Minigraph-Cactus, tapi pola sama)
+- **Komponen**: `process_high` label di `nextflow.config`
 - **Command**:
   ```bash
-  nextflow run main.nf -profile test -stub
+  nextflow run main.nf -profile test -stub -resume
   ```
 - **Error message**:
   ```
   Process requirement exceeds available CPUs -- req: 8; avail: 4
   ```
-- **Root Cause**: Default `process_high` di `nextflow.config` set ke 8 CPU, tapi laptop hanya punya 4. Override di profile `test` belum terbaca dengan benar karena config di-load sebelum profile override diterapkan ke process block.
-- **Solusi yang dicoba**: Menambahkan `process { withLabel: process_high { cpus = 4 } }` di dalam profile `test` — tapi override belum efektif saat `-resume`.
-- **Langkah selanjutnya**: Pindahkan CPU cap ke `conf/test.config` terpisah, atau tambahkan `cpus = { Math.min(4, task.attempt * 4) }` di process_high default.
+- **Root Cause**: Label `process_high` default ke 8 CPU di config global. Profile `test` mendefinisikan override di dalam `process {}` block, tapi saat `-resume` override belum terbaca karena cache dari run sebelumnya.
+- **Solusi yang dicoba**: Menambahkan `withLabel: process_high { cpus = 4 }` di dalam profile `test` — override ada tapi cache lama masih terbawa.
+- **Langkah selanjutnya**: Buat `conf/test.config` terpisah dan gunakan `includeConfig` di profile test. Atau hapus folder `work/` sebelum test ulang.
 - **Status**: ⏳ Investigating
 
 ---
@@ -53,69 +53,79 @@
   Error main.nf:49:1: Statements cannot be mixed with script declarations
   -- move statements into a process, workflow, or function
   ```
-- **Root Cause**: Nextflow v26 DSL2 strict mode tidak mengizinkan `workflow.onComplete { }` atau `workflow.onComplete = { }` di top-level script di luar `workflow {}` block.
-- **Solusi**: Hapus `workflow.onComplete` block dari `main.nf`. Completion log bisa ditambahkan nanti lewat `nextflow.config` atau operator `view` di dalam workflow jika diperlukan.
+- **Root Cause**: Nextflow **v26** DSL2 strict mode — `workflow.onComplete {}` tidak boleh di top-level script di luar `workflow {}` block. Berbeda dari Nextflow v22/v23.
+- **Solusi**: Hapus `workflow.onComplete` block dari `main.nf`. Log completion bisa ditambahkan nanti via event handler di `nextflow.config` jika dibutuhkan.
 - **Status**: ✅ Solved
+
+---
 
 ### [2026-06-26] `--stub-run` flag tidak dikenali di Nextflow v26
 - **Komponen**: CLI / Nextflow v26.04.4
 - **Error**: Pipeline berjalan dengan tool asli (bukan stub), `seqkit: command not found`
-- **Root Cause**: Di Nextflow v26, flag stub adalah `-stub` (satu dash), bukan `--stub-run`.
-- **Solusi**: Ganti `--stub-run` → `-stub`
+- **Root Cause**: Di Nextflow **v26**, flag stub mode adalah `-stub` (single dash, bukan double dash). Flag `--stub-run` sudah deprecated.
+- **Solusi**:
+  ```bash
+  # ❌ Salah (lama)
+  nextflow run main.nf --stub-run
+  # ✅ Benar (v26)
+  nextflow run main.nf -stub
+  ```
 - **Status**: ✅ Solved
 
 ---
 
-## 📚 Common Nextflow Pitfalls (referensi cepat)
-
-| Error | Kemungkinan Penyebab | Quick Fix |
-|-------|---------------------|-----------|
-| `No such file or directory` di process | Path relative dalam script | Gunakan `${projectDir}` atau pastikan file di-stage dengan benar |
-| `Process terminated with an error exit status` | Tool crash / OOM | Tambah memory di `process.memory`, cek log di `work/` |
-| `Channel was already consumed` | Channel dipakai 2× | Gunakan `.multiMap{}` atau simpan ke variable terpisah |
-| `Missing value for parameter 'input'` | Lupa kasih `--input` | Cek `nextflow.config` bagian `params.input` |
-| `WARN: Killing running tasks` | Pipeline di-cancel | Normal, bukan error. Resume dengan `-resume` |
-| `Staging file error` | File tidak ada saat runtime | Pastikan path di samplesheet.csv valid & file ada |
-| `Task exceeded max retries` | Tool butuh lebih banyak resource | Naikkan `maxRetries` atau `process_high` memory |
+### [2026-06-26] Pipeline pakai PGGB bukan Minigraph-Cactus (tool salah)
+- **Komponen**: `modules/local/alignment/`, `graph_construction/seqwish`, `graph_construction/smoothxg`
+- **Root Cause**: Pipeline awal dibangun menggunakan PGGB (wfmash → seqwish → smoothxg), padahal proposal menyebutkan **Minigraph-Cactus** (Hickey et al. 2024).
+- **Solusi**: Refactor total — hapus semua modul PGGB, ganti dengan:
+  - `modules/local/qc/quast.nf`
+  - `modules/local/graph_construction/minigraph.nf`
+  - `modules/local/graph_construction/cactus_minigraph.nf`
+  - `modules/local/graph_analysis/vg_stats.nf`
+  - `subworkflows/local/qc.nf`
+- **Status**: ✅ Solved
 
 ---
 
-## 🛠 Debugging Tips
+## 📚 Quick Reference — Debugging Nextflow
 
-### Cek log process yang gagal
+### Lihat log process yang gagal
 ```bash
-# Lihat .nextflow.log
+# Log utama
 tail -100 .nextflow.log
 
-# Masuk ke work directory process yang gagal
-# (cari hashnya dari output Nextflow, e.g. [ab/123456])
-ls work/ab/123456*/
+# Masuk work directory process gagal (cari hash dari output)
 cat work/ab/123456*/.command.err
 cat work/ab/123456*/.command.out
-cat work/ab/123456*/.command.sh   # lihat script yang dijalankan
+cat work/ab/123456*/.command.sh
 ```
 
-### Resume pipeline setelah error
+### Reset dan test ulang
 ```bash
-nextflow run main.nf -profile test -resume
+# Hapus cache lama (solusi untuk error CPU limit di atas)
+rm -rf work/ results/ .nextflow/
+nextflow run main.nf -profile test -stub
 ```
 
-### Jalankan hanya 1 process (dry-run/stub)
+### Resume dari titik kegagalan
 ```bash
-nextflow run main.nf -profile test --stub-run
+nextflow run main.nf -profile test -stub -resume
 ```
 
-### Cek resource usage
+### Cek versi Nextflow
 ```bash
-# Setelah pipeline, buka:
-open results/pipeline_info/report.html
+nextflow -version
+# Harus ≥ 23.04.0, saat ini: v26.04.4
 ```
 
 ---
 
-## 📝 Catatan Khusus *Elaeis guineensis*
+## 📝 Catatan Tool-Specific
 
-- Genome EG11 sangat besar (~1GB zip) — mungkin perlu HPC untuk proses ini
-- EG01 lebih kecil, cocok untuk development/testing di lokal
-- Header FASTA dari NCBI perlu di-rename ke format PanSN-spec sebelum masuk wfmash
-- wfmash butuh setidaknya 2 sequences dalam 1 file atau all-vs-all dari multiple files
+| Tool | Catatan Penting |
+|------|----------------|
+| **cactus-minigraph** | Butuh `jobstore` directory — jangan taruh di `/tmp` saat di HPC |
+| **odgi** | File input harus `.og` (binary), bukan `.gfa` langsung — perlu `odgi build` dulu |
+| **vg** | Format GFA dari Cactus kadang perlu di-validate dulu dengan `vg validate` |
+| **QUAST** | Opsi `--no-html` untuk mode headless di HPC (tanpa browser) |
+| **Nextflow di HPC** | Jalankan `nextflow` dari `screen` atau `tmux` agar tidak putus saat SSH disconnect |

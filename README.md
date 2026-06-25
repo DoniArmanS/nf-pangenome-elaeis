@@ -279,7 +279,8 @@ nf-pangenome-elaise/
 │   │   ├── minigraph.nf                 # SV-level graph
 │   │   └── cactus_minigraph.nf          # Base-level graph (output final)
 │   ├── graph_analysis/
-│   │   └── odgi.nf                      # odgi stats + odgi viz
+│   │   ├── odgi.nf                      # odgi stats + odgi viz (1D layout)
+│   │   └── vg_stats.nf                  # vg stats — node, edge, length
 │   └── variant_calling/
 │       └── vg_deconstruct.nf
 │

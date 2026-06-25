@@ -1,113 +1,169 @@
 # 📋 Progress Skripsi — nf-pangenome-elaise
-> Terakhir diupdate: 2026-06-26
-> **Deadline Analisis: November 2026 | Kompre: Desember 2026**
+> Terakhir diupdate: **2026-06-26**
+> **Deadline Analisis: November 2026 | Komprehensif: Desember 2026**
 
 ---
 
-## ✅ Setup & Infrastruktur
+## 📊 Persentase Kesiapan Keseluruhan
 
-- [x] Inisiasi repository `nf-pangenome-elaise`
-- [x] Setup struktur folder (nf-core convention)
-- [x] Buat `.gitignore` (data & proposal dikecualikan, logs dikecualikan)
+```
+Infrastructure  ████████████████████  100%
+Preprocessing   ██████████████████░░   90%  (code ada, belum ditest dengan tool asli)
+QC (QUAST)      ████████████████░░░░   80%  (module ada, belum ditest)
+Graph Construct ██████████████░░░░░░   70%  (module ada, stub OK, tool belum install)
+Graph Analysis  ████████████░░░░░░░░   60%  (odgi+vg module ada, belum ditest)
+HPC/Slurm       ████████░░░░░░░░░░░░   40%  (config ada, belum implement di Mahameru)
+Testing & Eval  ████░░░░░░░░░░░░░░░░   20%  (stub OK, real run belum)
+Penulisan BAB   ██░░░░░░░░░░░░░░░░░░   10%  (metodologi draft)
+─────────────────────────────────────────────
+TOTAL ANALISIS  ██████░░░░░░░░░░░░░░  ~34%
+```
+
+> **Catatan:** Kode pipeline sudah ~70% lengkap. Analisis biologis (data asli, hasil nyata) baru ~34%.
+
+---
+
+## ✅ Setup & Infrastruktur — 100% SELESAI
+
+- [x] Inisiasi repository `nf-pangenome-elaise` di GitHub
+- [x] Struktur folder nf-core convention
+- [x] `.gitignore` — eksklusikan DATA SKRIPSI, PROPOSAL, logs, genome besar
 - [x] `main.nf` — entry point Nextflow DSL2
 - [x] `nextflow.config` — profiles: local, docker, singularity, slurm, test
-- [x] Install Nextflow v26.04.4 di `~/.local/bin` (tanpa sudo)
-- [x] Modules: `wfmash`, `seqwish`, `smoothxg`, `odgi`, `seqkit_stats`, `seqkit_filter`, `vg_deconstruct` (semua ada `stub:`)
-- [x] Subworkflows: validate_input, preprocessing, graph_construction, graph_analysis, variant_calling
-- [x] Real data subset dari genome asli (`tests/subset_real_data.py`)
-  - [x] EGPMv6 — 5 seq × 100kb dari AVROS assembly (chromosom-level)
-  - [x] EG01 — 5 seq × 100kb dari EG01 assembly
-  - [x] ASM167249v1 — 5 seq × 100kb dari Dura assembly
-- [x] `tests/test_data/samplesheet.csv` dibuat
-- [x] PROGRESS.md + ERRORS.md
+- [x] Install Nextflow v26.04.4 di `~/.local/bin`
+- [x] SSH key GitHub terhubung (DoniArmanS)
+- [x] Git + GitHub push sukses
+
+---
+
+## ✅ Kode Pipeline — Selesai (Belum Ditest dengan Tool Asli)
+
+### Modules
+- [x] `modules/local/preprocessing/seqkit_stats.nf`
+- [x] `modules/local/preprocessing/seqkit_filter.nf`
+- [x] `modules/local/qc/quast.nf`
+- [x] `modules/local/graph_construction/minigraph.nf`
+- [x] `modules/local/graph_construction/cactus_minigraph.nf`
+- [x] `modules/local/graph_analysis/odgi.nf` (ODGI_STATS + ODGI_VIZ)
+- [x] `modules/local/graph_analysis/vg_stats.nf` ← **baru ditambah**
+- [x] `modules/local/variant_calling/vg_deconstruct.nf`
+
+### Subworkflows
+- [x] `subworkflows/local/validate_input.nf`
+- [x] `subworkflows/local/preprocessing.nf`
+- [x] `subworkflows/local/qc.nf`
+- [x] `subworkflows/local/graph_construction.nf` (Minigraph-Cactus)
+- [x] `subworkflows/local/graph_analysis.nf` (odgi + vg stats)
+- [x] `subworkflows/local/variant_calling.nf`
+
+### Workflow Utama
+- [x] `workflows/pangenome.nf` — 5 tahap sesuai proposal
+
+### Scripts & Dokumentasi
+- [x] `bin/extract_core_var.sh` — core vs variable sequences
+- [x] `tests/subset_real_data.py` — subset genome asli
+- [x] `tests/test_data/` — 3 assembly subset (EGPMv6, EG01, ASM167249v1)
 - [x] `docs/NEXTFLOW_PRINCIPLES.md`
-- [x] README.md sebagai Nextflow project documentation
-- [x] Git init + initial commit
-- [x] **Push ke GitHub** ← sedang dikerjakan
-- [ ] Fix open issue: WFMASH CPU limit di laptop (lihat ERRORS.md)
+- [x] README.md (Bahasa Indonesia, alur sesuai proposal)
 
 ---
 
-## 🔄 Analisis — Tahap 1: Data & Preprocessing
+## 🔄 Analisis — Tahap 1: Preprocessing
 
-- [ ] Download & ekstrak 5 assembly dari NCBI (sudah ada di DATA SKRIPSI)
-  - [ ] ASM167249v1 (Dura)
-  - [ ] EG01
-  - [ ] EG11
-  - [ ] EGPMv6
-  - [ ] Eg-DCM_assembly_v1
-- [ ] Validasi format FASTA & rename header ke PanSN-spec (`{sample}#{hap}#{chrom}`)
-- [ ] Buat `samplesheet.csv` dari data asli
-- [ ] Jalankan seqkit stats → cek ukuran, N50, GC content
-- [ ] Filter sekuens pendek (`min_seq_len = 1000`)
+- [ ] Ekstrak semua 5 zip genome dari DATA SKRIPSI
+  - [x] EG01 — sudah diekstrak
+  - [x] ASM167249v1 — sudah diekstrak
+  - [x] EGPMv6 — sudah diekstrak
+  - [ ] EG11 — belum diekstrak (989MB zip)
+  - [ ] Eg-DCM — belum diekstrak
+- [ ] Rename header FASTA ke PanSN-spec (`sample#hap#seq`)
+- [ ] Buat samplesheet.csv dari 5 assembly asli
 
 ---
 
-## 🔄 Analisis — Tahap 2: Konstruksi Pangenome Graph
+## 🔄 Analisis — Tahap 2: Quality Control (QUAST)
 
-- [ ] Test stub-run pipeline (tanpa tool asli)
-  ```bash
-  nextflow run main.nf -profile test --stub-run
-  ```
-- [ ] Install tools (pilih salah satu):
-  - [ ] Conda: `conda env create -f environment.yml`
-  - [ ] Docker: `docker pull quay.io/biocontainers/pggb`
-- [ ] wfmash — all-vs-all alignment (5 assembly)
-- [ ] seqwish — graph induction dari PAF
-- [ ] smoothxg — normalisasi graph
-- [ ] gfaffix — reduksi redundansi (opsional)
+- [ ] Install QUAST (`conda install -c bioconda quast`)
+- [ ] Jalankan QUAST pada 5 assembly asli
+- [ ] Catat: N50, jumlah contig, total bp, GC% per assembly
+- [ ] Tentukan backbone referensi (N50 tertinggi / kromosom-level)
+  - Kandidat: EGPMv6 (kromosom-level, 165 scaffolds)
 
 ---
 
-## 🔄 Analisis — Tahap 3: Analisis Graph
+## 🔄 Analisis — Tahap 3: Konstruksi Pangenome Graph (Minigraph-Cactus)
 
-- [ ] odgi build → konversi GFA ke binary
-- [ ] odgi stats → metrik: node, edge, path
-- [ ] odgi viz → visualisasi 1D layout
-- [ ] odgi layout + draw → visualisasi 2D (PCA-like)
-- [ ] Hitung coverage path per assembly
-
----
-
-## 🔄 Analisis — Tahap 4: Variant Calling (SV)
-
-- [ ] Pilih reference (EG01 atau ASM167249v1)
-- [ ] vg deconstruct → VCF dari pangenome graph
-- [ ] Filter VCF: QUAL, DP
-- [ ] Anotasi SV: insertions, deletions, inversions, translocations
-- [ ] Bandingkan distribusi SV antar varietas (dura vs pisifera vs tenera)
+- [ ] Install minigraph (`conda install -c bioconda minigraph`)
+- [ ] Install cactus (`singularity pull cactus.sif`)
+- [ ] Test stub-run fix (lihat ERRORS.md — WFMASH CPU limit)
+- [ ] Jalankan minigraph dengan data test_data subset
+- [ ] Jalankan cactus-minigraph dengan data test_data subset
+- [ ] Verifikasi output GFA valid
 
 ---
 
-## 🔄 Analisis — Tahap 5: Evaluasi Pipeline
+## 🔄 Analisis — Tahap 4: Evaluasi & Statistik
 
-- [ ] Benchmarking waktu & memori (lokal vs HPC)
-- [ ] Bandingkan hasil dengan PGGB bash script biasa
-- [ ] Dokumentasi parameter optimal untuk *E. guineensis*
-- [ ] MultiQC report final
+- [ ] Install odgi (`conda install -c bioconda odgi`)
+- [ ] Install vg (`conda install -c bioconda vg`)
+- [ ] Jalankan `odgi stats` → node, edge, path count
+- [ ] Jalankan `vg stats` → statistik graph
+- [ ] Jalankan `odgi viz` → visualisasi 1D
+- [ ] Jalankan `bin/extract_core_var.sh` → core & variable sequences
+- [ ] Dokumentasi hasil di BAB IV
+
+---
+
+## 🔄 Tahap 5: Implementasi & Evaluasi HPC Mahameru
+
+- [ ] Akses HPC Mahameru BRIN
+- [ ] Upload data dan pipeline ke HPC
+- [ ] Jalankan pipeline dengan profile `slurm`
+- [ ] Ukur runtime per tahap (QC, graph, evaluasi)
+- [ ] Ukur penggunaan CPU dan memori (dari `trace.tsv`)
+- [ ] Test `auto-resume` (simulasi kegagalan dan lanjut)
+- [ ] Dokumentasi: `report.html`, `timeline.html`, `dag.html`
 
 ---
 
 ## 📝 Penulisan Skripsi
 
-- [ ] BAB III: Metodologi — update sesuai implementasi nyata
-- [ ] BAB IV: Hasil & Pembahasan
-  - [ ] Statistik graph (node, edge, path)
-  - [ ] Tabel SV per varietas
-  - [ ] Gambar visualisasi graph 1D & 2D
-- [ ] BAB V: Kesimpulan & Saran
-- [ ] Daftar Pustaka (update dari Mendeley/Zotero)
+- [ ] BAB I — Pendahuluan (dari proposal)
+- [ ] BAB II — Landasan Teori (dari proposal)
+- [ ] BAB III — Metodologi (update sesuai implementasi)
+- [ ] BAB IV — Hasil & Pembahasan
+  - [ ] Tabel QC QUAST per assembly
+  - [ ] Statistik pangenome (node, edge, path)
+  - [ ] Tabel core vs variable sequences
+  - [ ] Grafik timeline & runtime
+  - [ ] Perbandingan konfigurasi sumber daya
+- [ ] BAB V — Kesimpulan & Saran
+- [ ] Daftar Pustaka
 
 ---
 
-## 🗓 Timeline
+## 🗂️ Riwayat Perubahan Besar
+
+| Tanggal | Perubahan |
+|---------|-----------|
+| 2026-06-26 | Init repo, setup infrastruktur, push ke GitHub |
+| 2026-06-26 | Ganti PGGB → Minigraph-Cactus (sesuai proposal) |
+| 2026-06-26 | Tambah QUAST module & subworkflow |
+| 2026-06-26 | Tambah `vg_stats.nf` module |
+| 2026-06-26 | Tambah `bin/extract_core_var.sh` (core vs variable sequences) |
+| 2026-06-26 | README ditulis ulang Bahasa Indonesia + alur sesuai proposal |
+| 2026-06-26 | Hapus dummy data generator → ganti dengan real genome subset |
+
+---
+
+## 🗓 Timeline Target
 
 | Bulan | Target |
 |-------|--------|
-| Juni 2026 | ✅ Setup repo & struktur |
-| Juli 2026 | Data preprocessing + stub pipeline |
-| Agustus 2026 | Graph construction (data asli kecil dulu) |
-| September 2026 | Graph analysis + SV detection |
-| Oktober 2026 | Evaluasi & benchmarking |
+| Juni 2026 | ✅ Setup repo, infrastruktur, kode pipeline lengkap |
+| Juli 2026 | Install tools, preprocessing 5 assembly asli |
+| Agustus 2026 | QC QUAST + Minigraph-Cactus (data asli kecil dulu) |
+| September 2026 | Graph analysis + evaluasi statistik |
+| Oktober 2026 | Implementasi & benchmarking di HPC Mahameru |
 | November 2026 | **DEADLINE ANALISIS** + draft BAB IV |
 | Desember 2026 | **KOMPREHENSIF** |
