@@ -1,44 +1,50 @@
 /*
 ========================================================================================
-    WORKFLOW: PANGENOME
-    Deskripsi: Workflow utama — orchestrates semua step dari input FASTA sampai output
+    WORKFLOW: PANGENOME — Minigraph-Cactus Pipeline
+    Deskripsi: Workflow utama sesuai proposal (Hickey et al. 2024)
+
+    Alur:
+      Input FASTA → Preprocessing → QC (QUAST) → Minigraph-Cactus Graph
+      → Analisis Graph (odgi/vg) → [opsional] Variant Calling
 ========================================================================================
 */
 
-// ─── Import Modules ──────────────────────────────────────────────────────────
-include { VALIDATE_INPUT         } from '../subworkflows/local/validate_input'
-include { PREPROCESSING          } from '../subworkflows/local/preprocessing'
-include { GRAPH_CONSTRUCTION     } from '../subworkflows/local/graph_construction'
-include { GRAPH_ANALYSIS         } from '../subworkflows/local/graph_analysis'
-include { VARIANT_CALLING        } from '../subworkflows/local/variant_calling'
+include { VALIDATE_INPUT     } from '../subworkflows/local/validate_input'
+include { PREPROCESSING      } from '../subworkflows/local/preprocessing'
+include { QC                 } from '../subworkflows/local/qc'
+include { GRAPH_CONSTRUCTION } from '../subworkflows/local/graph_construction'
+include { GRAPH_ANALYSIS     } from '../subworkflows/local/graph_analysis'
+include { VARIANT_CALLING    } from '../subworkflows/local/variant_calling'
 
-// ─────────────────────────────────────────────────────────────────────────────
 workflow PANGENOME_WORKFLOW {
 
     main:
-    // ── Step 0: Validasi input ────────────────────────────────────────────────
+
+    // ── Step 0: Validasi & parsing input ─────────────────────────────────────
     VALIDATE_INPUT()
-    ch_fasta = VALIDATE_INPUT.out.fasta   // channel: [ meta, fasta ]
+    ch_fasta = VALIDATE_INPUT.out.fasta   // [ meta, fasta ]
 
-    // ── Step 1: Preprocessing — cek format, nama, panjang sekuens ────────────
+    // ── Step 1: Preprocessing — filter sekuens pendek, validasi format ────────
     PREPROCESSING(ch_fasta)
-    ch_clean_fasta = PREPROCESSING.out.fasta
+    ch_clean = PREPROCESSING.out.fasta    // [ meta, fasta_clean ]
 
-    // ── Step 2: Konstruksi Pangenome Graph ────────────────────────────────────
-    //   wfmash (alignment) → seqwish (induction) → smoothxg (normalisasi)
-    GRAPH_CONSTRUCTION(ch_clean_fasta)
-    ch_graph = GRAPH_CONSTRUCTION.out.gfa
+    // ── Step 2: QC — QUAST per assembly → pilih backbone referensi ────────────
+    QC(ch_clean)
 
-    // ── Step 3: Analisis Graph ────────────────────────────────────────────────
-    //   odgi stats, paths, visualisasi 1D/2D
+    // ── Step 3: Konstruksi Pangenome Graph (Minigraph-Cactus) ─────────────────
+    //   minigraph (SV-level) → cactus-minigraph (base-level)
+    GRAPH_CONSTRUCTION(ch_clean)
+    ch_graph = GRAPH_CONSTRUCTION.out.gfa   // [ meta, full.gfa ]
+
+    // ── Step 4: Analisis Graph (odgi stats + visualisasi) ─────────────────────
     GRAPH_ANALYSIS(ch_graph)
 
-    // ── Step 4: Variant Calling (opsional) ───────────────────────────────────
-    if (params.call_variants && params.reference) {
+    // ── Step 5: Variant Calling / vg stats (opsional) ────────────────────────
+    if (params.call_variants && params.reference_name) {
         VARIANT_CALLING(ch_graph)
     }
 
     emit:
-    gfa       = ch_graph
-    stats     = GRAPH_ANALYSIS.out.stats
+    gfa    = ch_graph
+    stats  = GRAPH_ANALYSIS.out.stats
 }

@@ -23,7 +23,7 @@
 
 ## 🌴 Tentang Project Ini
 
-Pipeline ini dibangun untuk mengkonstruksi dan menganalisis **pangenome graph** dari beberapa assembly *Elaeis guineensis* (kelapa sawit). Menggunakan pendekatan **PGGB** (PanGenome Graph Builder) yang diimplementasikan lewat Nextflow DSL2, pipeline ini memungkinkan analisis variasi struktural (SV) antar varietas kelapa sawit secara reproducible dan scalable — dari laptop biasa hingga cluster HPC.
+Pipeline ini dibangun untuk mengkonstruksi dan menganalisis **pangenome graph** dari beberapa assembly *Elaeis guineensis* (kelapa sawit). Menggunakan pendekatan **Minigraph-Cactus** yang diimplementasikan lewat Nextflow DSL2, pipeline ini memungkinkan analisis variasi struktural (SV) antar varietas kelapa sawit secara reproducible dan scalable — dari laptop biasa hingga cluster HPC.
 
 > *Kenapa pangenome?* Satu referensi tunggal tidak cukup untuk merepresentasikan keragaman genetik suatu spesies. Pangenome graph menyimpan **semua** variasi — bukan hanya yang cocok dengan referensi.
 
@@ -35,8 +35,8 @@ Pipeline ini dibangun untuk mengkonstruksi dan menganalisis **pangenome graph** 
   Input: FASTA Assembly (EGPMv6, EG01, ASM167249v1, Eg-DCM, EG11)
          │
          ▼
-  ┌─────────────────────────────────────┐
-  │  Preprocessing                      │
+  ┌──────────────────────────────────────┐
+  │  Preprocessing                       │
   │  seqkit stats → seqkit filter       │
   └──────────────┬──────────────────────┘
                  │
@@ -235,15 +235,16 @@ results/
 
 | Tool | Fungsi | Referensi |
 |------|--------|-----------|
-| [wfmash](https://github.com/waveygang/wfmash) | All-vs-all alignment | Garrison et al. |
-| [seqwish](https://github.com/ekg/seqwish) | Induksi variation graph | Garrison & Guarracino |
-| [smoothxg](https://github.com/pangenome/smoothxg) | Normalisasi graph | — |
+| [QUAST](https://quast.sourceforge.net/) | QC assembly (N50, GC%, contig count) | Gurevich et al. |
+| [minigraph](https://github.com/lh3/minigraph) | SV-level pangenome graph | Li et al. |
+| [cactus-minigraph](https://github.com/ComparativeGenomicsToolkit/cactus) | Base-level pangenome graph | Hickey et al. 2024 |
 | [odgi](https://odgi.readthedocs.io) | Analisis & visualisasi graph | Guarracino et al. |
-| [vg](https://github.com/vgteam/vg) | Variant calling | Garrison et al. |
+| [vg](https://github.com/vgteam/vg) | Variant calling & statistik | Garrison et al. |
 | [seqkit](https://bioinf.shenwei.me/seqkit) | Statistik & filter FASTA | Shen et al. |
 
 **Referensi utama:**
-- Garrison et al. (2023). *Building pangenome graphs*. [Nature Methods](https://doi.org/10.1038/s41592-022-01755-1)
+- Hickey et al. (2024). *Pangenome graph construction from genome alignments with Minigraph-Cactus*. [Nature Biotechnology](https://doi.org/10.1038/s41587-023-01793-w)
+- [Cactus / Minigraph-Cactus](https://github.com/ComparativeGenomicsToolkit/cactus)
 - [nf-core/pangenome](https://github.com/nf-core/pangenome)
 - [PanSN-spec](https://github.com/pangenome/PanSN-spec)
 - [nf-core guidelines](https://nf-co.re/docs/contributing/guidelines)
