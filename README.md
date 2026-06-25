@@ -11,7 +11,8 @@
 
 ### `nf-pangenome-elaise`
 
-**Pipeline Nextflow DSL2 untuk konstruksi pangenome graph *Elaeis guineensis* (Kelapa Sawit)**
+**Pipeline Nextflow DSL2 untuk konstruksi pangenome graph *Elaeis guineensis* (Kelapa Sawit)**  
+**menggunakan Minigraph-Cactus pada infrastruktur HPC**
 
 [![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A523.04.0-23aa62?style=flat-square&logo=nextflow)](https://www.nextflow.io/)
 ![Status](https://img.shields.io/badge/status-in%20development-orange?style=flat-square)
@@ -23,49 +24,113 @@
 
 ## 🌴 Tentang Project Ini
 
-Pipeline ini dibangun untuk mengkonstruksi dan menganalisis **pangenome graph** dari beberapa assembly *Elaeis guineensis* (kelapa sawit). Menggunakan pendekatan **Minigraph-Cactus** yang diimplementasikan lewat Nextflow DSL2, pipeline ini memungkinkan analisis variasi struktural (SV) antar varietas kelapa sawit secara reproducible dan scalable — dari laptop biasa hingga cluster HPC.
+Pipeline ini mengotomatisasi seluruh proses konstruksi dan analisis **pangenome graph** dari 5 assembly *Elaeis guineensis* (kelapa sawit) yang tersedia di database publik NCBI. Diimplementasikan menggunakan **Nextflow DSL2** dan berjalan di **HPC Mahameru (BRIN)** dengan sistem penjadwalan **SLURM**.
 
-> *Kenapa pangenome?* Satu referensi tunggal tidak cukup untuk merepresentasikan keragaman genetik suatu spesies. Pangenome graph menyimpan **semua** variasi — bukan hanya yang cocok dengan referensi.
+Pendekatan utama yang digunakan adalah **Minigraph-Cactus** (Hickey et al., 2024) — metode konstruksi pangenome yang menggunakan satu genom berkualitas tinggi (level kromosom) sebagai backbone referensi, kemudian mensejajarkan seluruh assembly lainnya terhadap graf tersebut untuk menangkap seluruh variasi genetik.
+
+> **Tujuan penelitian:**
+> 1. Merancang arsitektur pipeline pangenome kelapa sawit yang terotomatisasi dengan Nextflow
+> 2. Mengimplementasikan pipeline di HPC Mahameru dengan optimasi alokasi sumber daya Slurm
+> 3. Mengevaluasi efisiensi pipeline berdasarkan runtime, penggunaan CPU, dan memori
 
 ---
 
 ## ⚙️ Alur Pipeline
 
+> Setiap tahap merupakan satu `process` Nextflow yang terhubung via `channel`. Semua tahap dieksekusi secara otomatis dan dapat di-*resume* dari titik kegagalan terakhir (`-resume`).
+
 ```
-  Input: FASTA Assembly (EGPMv6, EG01, ASM167249v1, Eg-DCM, EG11)
-         │
-         ▼
-  ┌──────────────────────────────────────┐
-  │  Preprocessing                       │
-  │  seqkit stats → seqkit filter       │
-  └──────────────┬──────────────────────┘
-                 │
-                 ▼
-  ┌─────────────────────────────────────┐
-  │  Konstruksi Pangenome Graph         │
-  │  wfmash   → All-vs-all alignment   │
-  │  seqwish  → Graph induction        │
-  │  smoothxg → Normalisasi graph      │
-  └──────────────┬──────────────────────┘
-                 │
-                 ▼
-  ┌─────────────────────────────────────┐
-  │  Analisis Graph                     │
-  │  odgi stats → Statistik graph      │
-  │  odgi viz   → Visualisasi 1D/2D    │
-  └──────────────┬──────────────────────┘
-                 │
-                 ▼
-  ┌─────────────────────────────────────┐
-  │  Variant Calling (opsional)         │
-  │  vg deconstruct → VCF output       │
-  └──────────────┬──────────────────────┘
-                 │
-                 ▼
-  ┌─────────────────────────────────────┐
-  │  MultiQC — Laporan QC teragregasi  │
-  └─────────────────────────────────────┘
+  ┌─────────────────────────────────────────────────────────────┐
+  │  INPUT                                                      │
+  │  5 Assembly Elaeis guineensis (FASTA dari NCBI)            │
+  │  EGPMv6 · EG01 · ASM167249v1 · Eg-DCM · EG11             │
+  └──────────────────────────┬──────────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  TAHAP 1: Preprocessing                                     │
+  │  ├─ seqkit stats  → statistik awal tiap assembly           │
+  │  └─ seqkit filter → hapus sekuens < 500bp                  │
+  └──────────────────────────┬──────────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  TAHAP 2: Quality Control — QUAST                           │
+  │  ├─ Input  : 5 file FASTA                                  │
+  │  ├─ Output : laporan per assembly (N50, jumlah contig,     │
+  │  │           total panjang basa, GC content %)             │
+  │  └─ Tujuan : menentukan backbone referensi terbaik         │
+  │              (kromosom-level = N50 tertinggi)              │
+  └──────────────────────────┬──────────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  TAHAP 3: Konstruksi Pangenome Graph — Minigraph-Cactus    │
+  │  ├─ minigraph       → SV-level graph dari backbone + others│
+  │  │                    output: pangenome.gfa (awal)         │
+  │  └─ cactus-minigraph → base-level alignment                │
+  │                         output: pangenome.full.gfa (final) │
+  └──────────────────────────┬──────────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  TAHAP 4: Evaluasi & Statistik Pangenome                    │
+  │  ├─ odgi stats → node, edge, path count                    │
+  │  ├─ vg stats   → statistik graph level vg                  │
+  │  ├─ odgi viz   → visualisasi 1D layout                     │
+  │  └─ extract_core_var.sh (Bash Script)                      │
+  │       → core sequences   (ada di semua individu)           │
+  │       → variable sequences (hanya sebagian individu)       │
+  └──────────────────────────┬──────────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  OUTPUT AKHIR                                               │
+  │  Laporan statistik pangenome kelapa sawit lengkap          │
+  └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 📦 Output yang Diharapkan
+
+Sesuai proposal penelitian, output yang dihasilkan pipeline ini adalah:
+
+### 📊 Tahap QC (QUAST)
+
+| File | Keterangan |
+|------|-----------|
+| `qc/{sample}/report.tsv` | Statistik per assembly: N50, jumlah contig, total bp, GC% |
+| `qc/{sample}/report.html` | Laporan visual QUAST per assembly |
+
+### 🔗 Tahap Konstruksi Graph (Minigraph-Cactus)
+
+| File | Keterangan |
+|------|-----------|
+| `graph/pangenome.gfa` | SV-level pangenome graph (dari minigraph) |
+| `graph/pangenome.full.gfa` | Base-level pangenome graph (output final Cactus) |
+
+### 📈 Tahap Evaluasi & Statistik
+
+| File | Keterangan |
+|------|-----------|
+| `analysis/pangenome.stats.yaml` | Statistik graph: jumlah **node, edge, path** (odgi stats) |
+| `analysis/pangenome.vg_stats.txt` | Statistik graph via **vg stats** |
+| `analysis/pangenome.1D.png` | Visualisasi 1D layout pangenome (odgi viz) |
+| `analysis/core_sequences.txt` | Daftar sekuens **inti** (ada di semua 5 assembly) |
+| `analysis/variable_sequences.txt` | Daftar sekuens **variabel** (hanya sebagian assembly) |
+| `analysis/pangenome_summary.tsv` | Laporan statistik pangenome final |
+
+### ⚡ Laporan Eksekusi Pipeline (Nextflow)
+
+| File | Keterangan |
+|------|-----------|
+| `pipeline_info/report.html` | Laporan eksekusi lengkap dengan runtime per proses |
+| `pipeline_info/timeline.html` | Grafik timeline eksekusi visual |
+| `pipeline_info/trace.tsv` | Tabel penggunaan CPU & memori per proses |
+| `pipeline_info/dag.html` | Grafik alur pipeline (DAG — Directed Acyclic Graph) |
+
+> **Catatan:** `report.html`, `timeline.html`, `trace.tsv`, dan `dag.html` digunakan untuk evaluasi performa pipeline (runtime, CPU usage, memory usage) sebagaimana disebutkan di proposal Bab Pengujian & Evaluasi.
 
 ---
 
@@ -76,42 +141,52 @@ Pipeline ini dibangun untuk mengkonstruksi dan menganalisis **pangenome graph** 
 | Kebutuhan | Versi | Catatan |
 |-----------|-------|---------|
 | [Nextflow](https://www.nextflow.io/) | ≥ 23.04.0 | Wajib |
-| Java | ≥ 11 | Wajib (dibutuhkan Nextflow) |
-| Docker / Singularity / Conda | — | Salah satu untuk menjalankan tools |
+| Java | ≥ 11 | Wajib |
+| Singularity | — | Untuk HPC (Mahameru) |
+| Docker | — | Untuk pengembangan lokal |
 
 ### Install Nextflow (tanpa sudo)
 
 ```bash
-# Download dan simpan ke ~/.local/bin
 curl -s https://get.nextflow.io | bash
 mkdir -p ~/.local/bin && mv nextflow ~/.local/bin/
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
-
-# Verifikasi
 nextflow -version
 ```
 
-### Test Cepat (Tanpa Tool, Tanpa HPC)
+### Test Cepat — Stub Mode (Tanpa Tool, Tanpa HPC)
 
 ```bash
-# Jalankan pipeline dalam stub mode — semua proses disimulasikan
+# Pipeline disimulasikan penuh tanpa menjalankan tool apapun
 nextflow run main.nf -profile test -stub
 ```
 
-### Jalankan dengan Data Test Asli
+### Lokal — Data Test (Subset Asli)
 
 ```bash
-# Regenerate subset dari genome asli (pertama kali saja)
+# Generate subset dari genome asli (pertama kali saja)
 python3 tests/subset_real_data.py
 
-# Jalankan lokal
+# Jalankan dengan referensi EGPMv6 (kromosom-level)
 nextflow run main.nf \
     -profile local \
     --input tests/test_data/samplesheet.csv \
+    --reference_name EGPMv6 \
     --outdir results/
 ```
 
-### Lanjut setelah Error
+### HPC Mahameru (SLURM)
+
+```bash
+nextflow run main.nf \
+    -profile slurm \
+    --input /path/to/samplesheet.csv \
+    --reference_name EGPMv6 \
+    --outdir /scratch/results/ \
+    -resume
+```
+
+### Resume setelah Error
 
 ```bash
 nextflow run main.nf -profile test -stub -resume
@@ -128,11 +203,13 @@ sample,fasta,cultivar
 EGPMv6,path/to/EGPMv6.fa,AVROS
 EG01,path/to/EG01.fa,Jacq
 ASM167249v1,path/to/ASM167249v1.fa,Dura
+Eg-DCM,path/to/EgDCM.fa,DCM
+EG11,path/to/EG11.fa,Tenera
 ```
 
-### Format Header FASTA (PanSN-spec)
+> ⚠️ Nilai `sample` untuk backbone referensi harus sama persis dengan `--reference_name`
 
-Header FASTA **harus** menggunakan format PanSN-spec agar bisa dibaca pipeline:
+### Format Header FASTA (PanSN-spec)
 
 ```
 >{sample}#{haplotype}#{nama_sekuens}
@@ -141,37 +218,35 @@ Header FASTA **harus** menggunakan format PanSN-spec agar bisa dibaca pipeline:
 >EGPMv6#1#GK000076.1
 ```
 
-Lihat spesifikasi lengkapnya di [PanSN-spec](https://github.com/pangenome/PanSN-spec).
-
 ---
 
 ## 🎛️ Parameter
 
 | Parameter | Default | Keterangan |
 |-----------|---------|------------|
-| `--input` | `null` | Path ke samplesheet CSV atau FASTA tunggal |
+| `--input` | `null` | Path ke samplesheet CSV |
 | `--outdir` | `./results` | Direktori output |
-| `--mode` | `full` | `full` \| `graph_only` \| `variant_only` |
-| `--segment_len` | `5000` | Panjang segmen wfmash (`-s`) |
-| `--min_map_pct` | `90` | Persentase identitas minimum wfmash (`-p`) |
-| `--n_haplotypes` | `5` | Jumlah haplotype wfmash (`-n`) |
-| `--min_match_len` | `311` | Panjang match minimum seqwish (`-k`) |
-| `--call_variants` | `false` | Aktifkan variant calling dengan vg |
-| `--reference` | `null` | Referensi untuk VCF deconstruct |
+| `--reference_name` | `null` | **Wajib** — nama sample backbone referensi |
+| `--min_seq_len` | `500` | Panjang minimum sekuens (filter seqkit) |
+| `--min_contig` | `500` | Panjang minimum contig untuk QUAST |
+| `--mg_preset` | `ggs` | Minigraph preset (`ggs` = genome-to-graph) |
+| `--cactus_cores` | `8` | Jumlah CPU untuk cactus-minigraph |
+| `--call_variants` | `false` | Aktifkan variant calling (vg deconstruct) |
 | `--max_memory` | `16.GB` | Batas memori maksimum |
 | `--max_cpus` | `8` | Batas CPU maksimum |
+| `--max_time` | `24.h` | Batas waktu eksekusi |
 
 ---
 
 ## 🖥️ Profile Eksekusi
 
-| Profile | Deskripsi |
-|---------|-----------|
-| `local` | Jalankan di laptop/PC tanpa container |
-| `docker` | Jalankan dengan Docker |
-| `singularity` | Jalankan dengan Singularity (cocok untuk HPC) |
-| `slurm` | Jalankan di cluster dengan SLURM scheduler |
-| `test` | Pakai `tests/test_data/`, resource dikurangi untuk lokal |
+| Profile | Executor | Container | Deskripsi |
+|---------|----------|-----------|-----------|
+| `local` | local | — | Laptop/PC tanpa container |
+| `docker` | local | Docker | Pengembangan lokal dengan container |
+| `singularity` | local | Singularity | HPC-compatible |
+| `slurm` | Slurm | Singularity | **HPC Mahameru BRIN** |
+| `test` | local | — | Data subset real, resource dikurangi |
 
 ---
 
@@ -180,53 +255,51 @@ Lihat spesifikasi lengkapnya di [PanSN-spec](https://github.com/pangenome/PanSN-
 ```
 nf-pangenome-elaise/
 │
-├── 📄 main.nf                        # Entry point pipeline
-├── ⚙️ nextflow.config                 # Parameter, profile, resource
+├── 📄 main.nf                           # Entry point pipeline
+├── ⚙️ nextflow.config                    # Parameter, profile, resource
 │
 ├── workflows/
-│   └── pangenome.nf                  # Orkestrator workflow utama
+│   └── pangenome.nf                     # Orkestrator utama (5 tahap)
 │
 ├── subworkflows/local/
-│   ├── validate_input.nf             # Parsing & validasi input
-│   ├── preprocessing.nf              # QC & filter sekuens
-│   ├── graph_construction.nf         # wfmash → seqwish → smoothxg
-│   ├── graph_analysis.nf             # odgi stats & visualisasi
-│   └── variant_calling.nf            # vg deconstruct → VCF
+│   ├── validate_input.nf                # Parsing & validasi samplesheet
+│   ├── preprocessing.nf                 # seqkit stats + filter
+│   ├── qc.nf                            # QUAST — QC assembly
+│   ├── graph_construction.nf            # Minigraph + Cactus
+│   ├── graph_analysis.nf                # odgi stats, vg stats, visualisasi
+│   └── variant_calling.nf              # vg deconstruct (opsional)
 │
 ├── modules/local/
-│   ├── preprocessing/                # seqkit_stats, seqkit_filter
-│   ├── alignment/                    # wfmash
-│   ├── graph_construction/           # seqwish, smoothxg
-│   ├── graph_analysis/               # odgi
-│   └── variant_calling/              # vg_deconstruct
+│   ├── preprocessing/
+│   │   ├── seqkit_stats.nf
+│   │   └── seqkit_filter.nf
+│   ├── qc/
+│   │   └── quast.nf                     # QUAST — output laporan kualitas
+│   ├── graph_construction/
+│   │   ├── minigraph.nf                 # SV-level graph
+│   │   └── cactus_minigraph.nf          # Base-level graph (output final)
+│   ├── graph_analysis/
+│   │   └── odgi.nf                      # odgi stats + odgi viz
+│   └── variant_calling/
+│       └── vg_deconstruct.nf
+│
+├── bin/
+│   └── extract_core_var.sh              # Bash script: core vs variable sequences
+│
+├── conf/                                # Konfigurasi HPC/Slurm terpisah
 │
 ├── tests/
-│   ├── subset_real_data.py           # Buat subset dari genome asli
-│   └── test_data/                    # Subset kecil (masuk git)
-│       ├── EGPMv6.fa                 # 5 seq × 100kb — AVROS
-│       ├── EG01.fa                   # 5 seq × 100kb — EG01
-│       ├── ASM167249v1.fa            # 5 seq × 100kb — Dura
+│   ├── subset_real_data.py              # Buat subset dari genome asli
+│   └── test_data/                       # Subset kecil (masuk git)
+│       ├── EGPMv6.fa                    # 5 seq × 100kb — AVROS (kromosom-level)
+│       ├── EG01.fa                      # 5 seq × 100kb — EG01
+│       ├── ASM167249v1.fa               # 5 seq × 100kb — Dura
 │       └── samplesheet.csv
 │
-├── docs/
-│   └── NEXTFLOW_PRINCIPLES.md        # Panduan coding Nextflow project ini
-│
-├── 📊 PROGRESS.md                    # Checklist progress pengerjaan
-└── 🐛 ERRORS.md                      # Log error & solusinya
-```
-
----
-
-## 📦 Output Pipeline
-
-```
-results/
-├── preprocessing/      # Laporan seqkit stats
-├── alignment/          # File PAF hasil alignment
-├── graph/              # GFA pangenome graph (raw & smooth)
-├── analysis/           # Statistik ODGI, visualisasi 1D & 2D
-├── variants/           # File VCF (jika --call_variants aktif)
-└── pipeline_info/      # Report, timeline, trace, DAG eksekusi
+├── 📊 PROGRESS.md                       # Checklist progress per tahap
+├── 🐛 ERRORS.md                         # Log error & debugging notes
+└── docs/
+    └── NEXTFLOW_PRINCIPLES.md           # Panduan coding Nextflow
 ```
 
 ---
@@ -235,30 +308,24 @@ results/
 
 | Tool | Fungsi | Referensi |
 |------|--------|-----------|
-| [QUAST](https://quast.sourceforge.net/) | QC assembly (N50, GC%, contig count) | Gurevich et al. |
-| [minigraph](https://github.com/lh3/minigraph) | SV-level pangenome graph | Li et al. |
+| [QUAST](https://quast.sourceforge.net/) | QC assembly — N50, contig count, GC%, total bp | Gurevich et al. 2013 |
+| [minigraph](https://github.com/lh3/minigraph) | Konstruksi SV-level pangenome graph | Li et al. 2020 |
 | [cactus-minigraph](https://github.com/ComparativeGenomicsToolkit/cactus) | Base-level pangenome graph | Hickey et al. 2024 |
-| [odgi](https://odgi.readthedocs.io) | Analisis & visualisasi graph | Guarracino et al. |
-| [vg](https://github.com/vgteam/vg) | Variant calling & statistik | Garrison et al. |
-| [seqkit](https://bioinf.shenwei.me/seqkit) | Statistik & filter FASTA | Shen et al. |
+| [odgi](https://odgi.readthedocs.io) | Statistik & visualisasi graph (odgi stats, odgi viz) | Guarracino et al. |
+| [vg](https://github.com/vgteam/vg) | Statistik graph (vg stats) & variant calling | Garrison et al. |
+| [seqkit](https://bioinf.shenwei.me/seqkit) | Preprocessing FASTA (stats & filter) | Shen et al. |
 
 **Referensi utama:**
 - Hickey et al. (2024). *Pangenome graph construction from genome alignments with Minigraph-Cactus*. [Nature Biotechnology](https://doi.org/10.1038/s41587-023-01793-w)
-- [Cactus / Minigraph-Cactus](https://github.com/ComparativeGenomicsToolkit/cactus)
-- [nf-core/pangenome](https://github.com/nf-core/pangenome)
-- [PanSN-spec](https://github.com/pangenome/PanSN-spec)
+- [Cactus — Comparative Genomics Toolkit](https://github.com/ComparativeGenomicsToolkit/cactus)
 - [nf-core guidelines](https://nf-co.re/docs/contributing/guidelines)
+- [PanSN-spec](https://github.com/pangenome/PanSN-spec)
 
 ---
 
 ## 📖 Pengembangan
 
-Baca [`docs/NEXTFLOW_PRINCIPLES.md`](docs/NEXTFLOW_PRINCIPLES.md) untuk panduan:
-- Anatomi process Nextflow DSL2
-- Pola Meta Map
-- Aturan channel
-- Konvensi stub & testing
-- Checklist sebelum push
+Baca [`docs/NEXTFLOW_PRINCIPLES.md`](docs/NEXTFLOW_PRINCIPLES.md) untuk panduan coding.
 
 Pantau progres di [`PROGRESS.md`](PROGRESS.md) dan catat error di [`ERRORS.md`](ERRORS.md).
 
