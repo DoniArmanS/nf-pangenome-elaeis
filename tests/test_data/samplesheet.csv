@@ -1,0 +1,4 @@
+sample,fasta,cultivar
+EGPMv6,/home/bonkhead/nf-pangenome-elaise/tests/test_data/EGPMv6.fa,AVROS
+EG01,/home/bonkhead/nf-pangenome-elaise/tests/test_data/EG01.fa,Jacq
+ASM167249v1,/home/bonkhead/nf-pangenome-elaise/tests/test_data/ASM167249v1.fa,Dura

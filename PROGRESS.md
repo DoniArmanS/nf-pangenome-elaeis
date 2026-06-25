@@ -8,13 +8,23 @@
 
 - [x] Inisiasi repository `nf-pangenome-elaise`
 - [x] Setup struktur folder (nf-core convention)
-- [x] Buat `.gitignore` (data & proposal dikecualikan)
+- [x] Buat `.gitignore` (data & proposal dikecualikan, logs dikecualikan)
 - [x] `main.nf` — entry point Nextflow DSL2
 - [x] `nextflow.config` — profiles: local, docker, singularity, slurm, test
-- [x] Dummy data generator (`tests/dummy_data/generate_dummy.py`)
-- [x] Data dummy 5 assembly × 3 kromosom dibuat
-- [ ] Init git + push ke GitHub (`nf-pangenome-elaise`)
-- [ ] Setup VSCode extensions (Nextflow, Pylance, GitLens)
+- [x] Install Nextflow v26.04.4 di `~/.local/bin` (tanpa sudo)
+- [x] Modules: `wfmash`, `seqwish`, `smoothxg`, `odgi`, `seqkit_stats`, `seqkit_filter`, `vg_deconstruct` (semua ada `stub:`)
+- [x] Subworkflows: validate_input, preprocessing, graph_construction, graph_analysis, variant_calling
+- [x] Real data subset dari genome asli (`tests/subset_real_data.py`)
+  - [x] EGPMv6 — 5 seq × 100kb dari AVROS assembly (chromosom-level)
+  - [x] EG01 — 5 seq × 100kb dari EG01 assembly
+  - [x] ASM167249v1 — 5 seq × 100kb dari Dura assembly
+- [x] `tests/test_data/samplesheet.csv` dibuat
+- [x] PROGRESS.md + ERRORS.md
+- [x] `docs/NEXTFLOW_PRINCIPLES.md`
+- [x] README.md sebagai Nextflow project documentation
+- [x] Git init + initial commit
+- [x] **Push ke GitHub** ← sedang dikerjakan
+- [ ] Fix open issue: WFMASH CPU limit di laptop (lihat ERRORS.md)
 
 ---
 

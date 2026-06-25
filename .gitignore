@@ -1,11 +1,11 @@
 # ==============================================================================
-# DATA & PROPOSAL SKRIPSI — JANGAN DI-COMMIT
+# DATA & DOKUMEN SKRIPSI — JANGAN DI-COMMIT
 # ==============================================================================
 DATA SKRIPSI/
 PROPOSAL SKRIPSI/
 
 # ==============================================================================
-# NEXTFLOW RUNTIME FILES
+# NEXTFLOW RUNTIME
 # ==============================================================================
 .nextflow/
 .nextflow.log*
@@ -14,11 +14,11 @@ results/
 output/
 
 # ==============================================================================
-# GENOME & BIOINFORMATICS DATA FILES (besar, pakai git-lfs atau simpan manual)
+# FILE GENOME & BIOINFORMATIKA BESAR
+# (test_data/*.fa dikecualikan dari aturan ini — sengaja kecil & masuk git)
 # ==============================================================================
-*.fa
-*.fasta
 *.fa.gz
+*.fasta
 *.fasta.gz
 *.fastq
 *.fastq.gz
@@ -40,9 +40,11 @@ output/
 *.sdf
 *.og
 *.odgi
+*.fna
+*.fna.gz
 
 # ==============================================================================
-# LARGE ARCHIVE / DATASET FILES
+# ARCHIVE & DATASET BESAR
 # ==============================================================================
 *.zip
 *.tar
@@ -51,14 +53,14 @@ output/
 *.tgz
 
 # ==============================================================================
-# REPORT & PIPELINE OUTPUTS
+# PIPELINE OUTPUT
 # ==============================================================================
 multiqc_report.html
 multiqc_data/
 pipeline_info/
 
 # ==============================================================================
-# PYTHON & CONDA ENVIRONMENT
+# PYTHON
 # ==============================================================================
 __pycache__/
 *.py[cod]
@@ -69,6 +71,7 @@ env/
 venv/
 *.conda
 *.yml.lock
+.ipynb_checkpoints/
 
 # ==============================================================================
 # R
@@ -85,14 +88,16 @@ Thumbs.db
 *.swp
 *.swo
 *~
-.vscode/settings.json
 .idea/
+.vscode/settings.json
+.vscode/launch.json
 
 # ==============================================================================
-# LOGS & TEMP
+# LOG & TEMP
 # ==============================================================================
 *.log
 *.tmp
 *.temp
 slurm-*.out
 sbatch-*.sh
+nohup.out

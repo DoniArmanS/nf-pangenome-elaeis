@@ -1,6 +1,0 @@
-sample,fasta,assembler
-EG_ASM1,/home/bonkhead/nf-pangenome-elaise/tests/dummy_data/EG_ASM1.fa,dura
-EG_ASM2,/home/bonkhead/nf-pangenome-elaise/tests/dummy_data/EG_ASM2.fa,pisifera
-EG_ASM3,/home/bonkhead/nf-pangenome-elaise/tests/dummy_data/EG_ASM3.fa,tenera
-EG_ASM4,/home/bonkhead/nf-pangenome-elaise/tests/dummy_data/EG_ASM4.fa,dura
-EG_ASM5,/home/bonkhead/nf-pangenome-elaise/tests/dummy_data/EG_ASM5.fa,pisifera

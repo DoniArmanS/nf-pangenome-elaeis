@@ -27,13 +27,42 @@
 
 ## 🔴 Open Issues
 
-> Belum ada error yang tercatat.
+### [2026-06-26] WFMASH: Process requirement exceeds available CPUs
+- **Komponen**: `modules/local/alignment/wfmash.nf` — label `process_high`
+- **Command**:
+  ```bash
+  nextflow run main.nf -profile test -stub
+  ```
+- **Error message**:
+  ```
+  Process requirement exceeds available CPUs -- req: 8; avail: 4
+  ```
+- **Root Cause**: Default `process_high` di `nextflow.config` set ke 8 CPU, tapi laptop hanya punya 4. Override di profile `test` belum terbaca dengan benar karena config di-load sebelum profile override diterapkan ke process block.
+- **Solusi yang dicoba**: Menambahkan `process { withLabel: process_high { cpus = 4 } }` di dalam profile `test` — tapi override belum efektif saat `-resume`.
+- **Langkah selanjutnya**: Pindahkan CPU cap ke `conf/test.config` terpisah, atau tambahkan `cpus = { Math.min(4, task.attempt * 4) }` di process_high default.
+- **Status**: ⏳ Investigating
 
 ---
 
 ## ✅ Solved Issues
 
-> Kosong dulu — isi saat ada error yang berhasil dipecahkan.
+### [2026-06-26] `workflow.onComplete` — Statements cannot be mixed with script declarations
+- **Komponen**: `main.nf`
+- **Error message**:
+  ```
+  Error main.nf:49:1: Statements cannot be mixed with script declarations
+  -- move statements into a process, workflow, or function
+  ```
+- **Root Cause**: Nextflow v26 DSL2 strict mode tidak mengizinkan `workflow.onComplete { }` atau `workflow.onComplete = { }` di top-level script di luar `workflow {}` block.
+- **Solusi**: Hapus `workflow.onComplete` block dari `main.nf`. Completion log bisa ditambahkan nanti lewat `nextflow.config` atau operator `view` di dalam workflow jika diperlukan.
+- **Status**: ✅ Solved
+
+### [2026-06-26] `--stub-run` flag tidak dikenali di Nextflow v26
+- **Komponen**: CLI / Nextflow v26.04.4
+- **Error**: Pipeline berjalan dengan tool asli (bukan stub), `seqkit: command not found`
+- **Root Cause**: Di Nextflow v26, flag stub adalah `-stub` (satu dash), bukan `--stub-run`.
+- **Solusi**: Ganti `--stub-run` → `-stub`
+- **Status**: ✅ Solved
 
 ---
 
