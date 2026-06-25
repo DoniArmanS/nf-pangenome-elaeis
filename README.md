@@ -14,9 +14,8 @@
 **Pipeline Nextflow DSL2 untuk konstruksi pangenome graph *Elaeis guineensis* (Kelapa Sawit)**
 
 [![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A523.04.0-23aa62?style=flat-square&logo=nextflow)](https://www.nextflow.io/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/status-in%20development-orange?style=flat-square)]()
-[![Genome](https://img.shields.io/badge/spesies-Elaeis%20guineensis-green?style=flat-square)]()
+![Status](https://img.shields.io/badge/status-in%20development-orange?style=flat-square)
+[![Genome](https://img.shields.io/badge/spesies-Elaeis%20guineensis-green?style=flat-square)](https://www.ncbi.nlm.nih.gov/datasets/taxonomy/51953/)
 
 </div>
 
@@ -270,6 +269,6 @@ Pantau progres di [`PROGRESS.md`](PROGRESS.md) dan catat error di [`ERRORS.md`](
 
 *Made with 🤍 by **Doni Arman***
 
-*Informatika · Universitas Mulawarman · 2026*
+*Sistem Informasi · Universitas Riau · 2026*
 
 </div>
