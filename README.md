@@ -35,6 +35,33 @@ Pendekatan utama yang digunakan adalah **Minigraph-Cactus** (Hickey et al., 2024
 
 ---
 
+## 📊 Progress & Timeline
+
+```
+Infrastructure  ████████████████████  100%
+Tool Install    ████████████████████  100%
+Pipeline Code   ██████████████████░░   90%
+Real Data Run   ████░░░░░░░░░░░░░░░░   20%
+HPC Deployment  ████████░░░░░░░░░░░░   40%
+─────────────────────────────────────────
+KESELURUHAN     ████████░░░░░░░░░░░░  ~40%
+```
+
+| Fase | Target Selesai | Status |
+|------|----------------|--------|
+| 🔧 Setup & Infrastruktur | Juni 2026 | ✅ Selesai |
+| 🧬 Install Tools (conda) | Juni 2026 | ✅ Selesai |
+| 📥 Preprocessing 5 Assembly | Juli 2026 | 🔜 Berikutnya |
+| 📊 QC (QUAST) + Graph Construction | Agustus 2026 | ⏳ |
+| 📈 Graph Analysis & Evaluasi | September 2026 | ⏳ |
+| 🖥️ HPC Mahameru Benchmarking | Oktober 2026 | ⏳ |
+| 📝 **DEADLINE ANALISIS** + BAB IV | **November 2026** | ⏳ |
+| 🎓 **KOMPREHENSIF** | **Desember 2026** | ⏳ |
+
+> Lihat detail progress lengkap di [`PROGRESS.md`](PROGRESS.md)
+
+---
+
 ## ⚙️ Alur Pipeline
 
 > Setiap tahap merupakan satu `process` Nextflow yang terhubung via `channel`. Semua tahap dieksekusi secara otomatis dan dapat di-*resume* dari titik kegagalan terakhir (`-resume`).
@@ -243,6 +270,7 @@ EG11,path/to/EG11.fa,Tenera
 | Profile | Executor | Container | Deskripsi |
 |---------|----------|-----------|-----------|
 | `local` | local | — | Laptop/PC tanpa container |
+| `conda` | local | Conda env | **Direkomendasikan** — pakai env `pangenome` |
 | `docker` | local | Docker | Pengembangan lokal dengan container |
 | `singularity` | local | Singularity | HPC-compatible |
 | `slurm` | Slurm | Singularity | **HPC Mahameru BRIN** |
