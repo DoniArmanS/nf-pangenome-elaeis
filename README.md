@@ -69,34 +69,30 @@ KESELURUHAN     ████████░░░░░░░░░░░░  ~4
 ```
   ┌─────────────────────────────────────────────────────────────┐
   │  INPUT                                                      │
-  │  5 Assembly Elaeis guineensis (FASTA dari NCBI)            │
-  │  EGPMv6 · EG01 · ASM167249v1 · Eg-DCM · EG11             │
+  │  samplesheet.csv — daftar 5 assembly FASTA kelapa sawit     │
+  │  (EGPMv6, EG01, ASM167249v1, Eg-DCM, EG11)                │
   └──────────────────────────┬──────────────────────────────────┘
                              │
                              ▼
   ┌─────────────────────────────────────────────────────────────┐
   │  TAHAP 1: Preprocessing                                     │
-  │  ├─ seqkit stats  → statistik awal tiap assembly           │
-  │  └─ seqkit filter → hapus sekuens < 500bp                  │
+  │  ├─ seqkit stats  → statistik dasar (jumlah seq, total bp) │
+  │  └─ seqkit seq    → filter min length 500bp                │
   └──────────────────────────┬──────────────────────────────────┘
                              │
                              ▼
   ┌─────────────────────────────────────────────────────────────┐
-  │  TAHAP 2: Quality Control — QUAST                           │
-  │  ├─ Input  : 5 file FASTA                                  │
-  │  ├─ Output : laporan per assembly (N50, jumlah contig,     │
-  │  │           total panjang basa, GC content %)             │
-  │  └─ Tujuan : menentukan backbone referensi terbaik         │
-  │              (kromosom-level = N50 tertinggi)              │
+  │  TAHAP 2: Quality Control                                   │
+  │  └─ QUAST  → N50, jumlah contig, GC%, total bp             │
   └──────────────────────────┬──────────────────────────────────┘
                              │
                              ▼
   ┌─────────────────────────────────────────────────────────────┐
-  │  TAHAP 3: Konstruksi Pangenome Graph — Minigraph-Cactus    │
-  │  ├─ minigraph       → SV-level graph dari backbone + others│
-  │  │                    output: pangenome.gfa (awal)         │
-  │  └─ cactus-minigraph → base-level alignment                │
-  │                         output: pangenome.full.gfa (final) │
+  │  TAHAP 3: Konstruksi Pangenome Graph (Minigraph-Cactus)     │
+  │  ├─ minigraph     → SV-level graph (.gfa) dari referensi   │
+  │  └─ cactus-minigraph → base-level graph (.full.gfa)        │
+  │       Input: seqFile.txt + minigraph.gfa                    │
+  │       Output: pangenome graph level basa (GFA final)        │
   └──────────────────────────┬──────────────────────────────────┘
                              │
                              ▼
@@ -120,8 +116,6 @@ KESELURUHAN     ████████░░░░░░░░░░░░  ~4
 ---
 
 ## 📦 Output yang Diharapkan
-
-Sesuai proposal penelitian, output yang dihasilkan pipeline ini adalah:
 
 ### 📊 Tahap QC (QUAST)
 
@@ -157,22 +151,73 @@ Sesuai proposal penelitian, output yang dihasilkan pipeline ini adalah:
 | `pipeline_info/trace.tsv` | Tabel penggunaan CPU & memori per proses |
 | `pipeline_info/dag.html` | Grafik alur pipeline (DAG — Directed Acyclic Graph) |
 
-> **Catatan:** `report.html`, `timeline.html`, `trace.tsv`, dan `dag.html` digunakan untuk evaluasi performa pipeline (runtime, CPU usage, memory usage) sebagaimana disebutkan di proposal Bab Pengujian & Evaluasi.
-
 ---
 
 ## 🚀 Cara Pakai
 
-### Prasyarat
+Pipeline ini dibagi menjadi **3 bagian utama**:
+
+1. [📋 Bagian 1: Daftar Akun HPC Mahameru BRIN](#-bagian-1-daftar-akun-hpc-mahameru-brin)
+2. [💻 Bagian 2: Menjalankan Pipeline](#-bagian-2-menjalankan-pipeline)
+3. [🔄 Bagian 3: Mengganti Data untuk Organisme Lain](#-bagian-3-mengganti-data-untuk-organisme-lain)
+
+---
+
+### 📋 Bagian 1: Daftar Akun HPC Mahameru BRIN
+
+Pipeline ini dirancang untuk dijalankan di **HPC Mahameru BRIN** dengan scheduler **SLURM**. Berikut langkah pendaftarannya:
+
+> 📖 Referensi lengkap: [tmelialab/HPC](https://github.com/tmelialab/HPC)
+
+**Langkah 1 — Daftar akun ELSA BRIN**
+1. Buka [https://elsa.brin.go.id/akun](https://elsa.brin.go.id/akun)
+2. Daftarkan akun dengan Nama Lengkap, Email, dan Identitas diri
+
+**Langkah 2 — Ajukan layanan HPC untuk Bioinformatika**
+1. Buka [halaman pengajuan layanan HPC Bioinformatika](https://elsa.brin.go.id/layanan/index/%20HPC%20untuk%20%20Bioinformatika%20/6393)
+2. Isi formulir:
+   - **Judul Proposal** — sesuai skripsi/penelitian
+   - **Abstrak** — dari proposal skripsi
+   - **Daftar Anggota** — nama kamu + nama dosen pembimbing (wajib untuk mahasiswa)
+   - **Perangkat Lunak** — `SLURM, Conda, Singularity, Nextflow`
+   - **Public Key** — upload SSH public key (lihat cara buat di bawah)
+3. Tunggu email approval dari pengelola HPC
+
+**Langkah 3 — Buat SSH Key**
+```bash
+# Di laptop (Linux/Mac)
+ssh-keygen -t rsa -b 4096
+
+# Windows (PowerShell)
+ssh-keygen
+```
+Upload file `~/.ssh/id_rsa.pub` ke formulir ELSA BRIN.
+
+**Langkah 4 — Login ke HPC Mahameru**
+```bash
+ssh <username>@login2.hpc.brin.go.id
+```
+
+> ⚠️ **Penting:**
+> - Akun sivitas eksternal BRIN expired setiap **3 bulan** — kirim email ke `hpc@brin.go.id` untuk aktivasi ulang
+> - Download data/aplikasi hanya bisa melalui **login node**, bukan worker node
+> - Partisi yang tersedia: `interactive` (maks 2 jam), `short` (maks 24 jam), `medium-small` (maks 72 jam)
+
+---
+
+### 💻 Bagian 2: Menjalankan Pipeline
+
+#### Prasyarat
 
 | Kebutuhan | Versi | Catatan |
 |-----------|-------|---------|
 | [Nextflow](https://www.nextflow.io/) | ≥ 23.04.0 | Wajib |
 | Java | ≥ 11 | Wajib |
-| Singularity | — | Untuk HPC (Mahameru) |
-| Docker | — | Untuk pengembangan lokal |
+| [Conda/Mamba](https://github.com/conda-forge/miniforge) | — | Untuk install tools lokal |
+| Docker | — | Untuk cactus-minigraph |
+| Singularity | — | Untuk HPC |
 
-### Install Nextflow (tanpa sudo)
+#### Step 1 — Install Nextflow
 
 ```bash
 curl -s https://get.nextflow.io | bash
@@ -181,30 +226,86 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
 nextflow -version
 ```
 
-### Test Cepat — Stub Mode (Tanpa Tool, Tanpa HPC)
+#### Step 2 — Install Tools via Conda
 
 ```bash
-# Pipeline disimulasikan penuh tanpa menjalankan tool apapun
-nextflow run main.nf -profile test -stub
+# Install Miniforge (conda + mamba)
+curl -L -o miniforge.sh \
+  https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+bash miniforge.sh -b -p $HOME/miniforge3
+$HOME/miniforge3/bin/conda init bash
+source ~/.bashrc
+
+# Buat environment khusus pangenome
+mamba create -y -n pangenome python=3.12
+conda activate pangenome
+
+# Install semua tools bioinformatika
+mamba install -y -c bioconda -c conda-forge seqkit quast minigraph odgi vg
 ```
 
-### Lokal — Data Test (Subset Asli)
+#### Step 3 — Install Cactus (Docker)
 
 ```bash
-# Generate subset dari genome asli (pertama kali saja)
-python3 tests/subset_real_data.py
+# Cactus hanya tersedia via Docker image (~1GB)
+sudo usermod -aG docker $USER   # pertama kali saja, lalu restart/logout
+docker pull quay.io/comparative-genomics-toolkit/cactus:v2.9.0
+```
 
-# Jalankan dengan referensi EGPMv6 (kromosom-level)
+#### Step 4 — Clone Repository
+
+```bash
+git clone https://github.com/DoniArmanS/nf-pangenome-elaise.git
+cd nf-pangenome-elaise
+```
+
+#### Step 5 — Siapkan Data
+
+Taruh file FASTA assembly ke folder `data/`:
+
+```
+data/
+├── EGPMv6/         ← taruh EGPMv6.fa di sini (referensi backbone)
+├── EG01/           ← taruh EG01.fa di sini
+├── ASM167249v1/    ← taruh ASM167249v1.fa di sini
+├── Eg-DCM/         ← taruh EgDCM.fa di sini
+└── EG11/           ← taruh EG11.fa di sini
+```
+
+Lalu buat file `samplesheet.csv`:
+
+```csv
+sample,fasta,cultivar
+EGPMv6,data/EGPMv6/EGPMv6.fa,AVROS
+EG01,data/EG01/EG01.fa,Jacq
+ASM167249v1,data/ASM167249v1/ASM167249v1.fa,Dura
+Eg-DCM,data/Eg-DCM/EgDCM.fa,DCM
+EG11,data/EG11/EG11.fa,Tenera
+```
+
+> ⚠️ Nilai `sample` untuk backbone referensi **harus sama persis** dengan `--reference_name`
+
+#### Step 6 — Jalankan Pipeline
+
+```bash
+# ═══════════════════════════════════════════════════
+# Opsi A: Test lokal (data subset kecil, di laptop)
+# ═══════════════════════════════════════════════════
+conda activate pangenome
+nextflow run main.nf -profile test,conda
+
+# ═══════════════════════════════════════════════════
+# Opsi B: Data asli di laptop
+# ═══════════════════════════════════════════════════
 nextflow run main.nf \
-    -profile local \
-    --input tests/test_data/samplesheet.csv \
+    -profile conda \
+    --input samplesheet.csv \
     --reference_name EGPMv6 \
     --outdir results/
-```
 
-### HPC Mahameru (SLURM)
-
-```bash
+# ═══════════════════════════════════════════════════
+# Opsi C: HPC Mahameru (SLURM + Singularity)
+# ═══════════════════════════════════════════════════
 nextflow run main.nf \
     -profile slurm \
     --input /path/to/samplesheet.csv \
@@ -213,37 +314,75 @@ nextflow run main.nf \
     -resume
 ```
 
-### Resume setelah Error
+#### Resume Setelah Error
 
 ```bash
-nextflow run main.nf -profile test -stub -resume
+# Nextflow otomatis melanjutkan dari proses yang gagal
+nextflow run main.nf -profile test,conda -resume
 ```
 
 ---
 
-## 📋 Format Input
+### 🔄 Bagian 3: Mengganti Data untuk Organisme Lain
 
-### Samplesheet CSV
+Pipeline ini **tidak terbatas untuk kelapa sawit** — bisa dipakai untuk organisme apapun yang punya beberapa assembly genome. Berikut caranya:
 
-```csv
-sample,fasta,cultivar
-EGPMv6,path/to/EGPMv6.fa,AVROS
-EG01,path/to/EG01.fa,Jacq
-ASM167249v1,path/to/ASM167249v1.fa,Dura
-Eg-DCM,path/to/EgDCM.fa,DCM
-EG11,path/to/EG11.fa,Tenera
+#### 1. Siapkan Assembly Genome
+
+Download assembly dari [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/) atau sumber lain. Contoh untuk **padi** (*Oryza sativa*):
+
+```bash
+# Contoh: buat folder untuk 3 assembly padi
+mkdir -p data/Nipponbare data/IR64 data/Kasalath
+# Taruh file .fa / .fna / .fasta ke masing-masing folder
 ```
 
-> ⚠️ Nilai `sample` untuk backbone referensi harus sama persis dengan `--reference_name`
+#### 2. Rename Header FASTA ke PanSN-spec
 
-### Format Header FASTA (PanSN-spec)
+Semua header FASTA **wajib** mengikuti format [PanSN-spec](https://github.com/pangenome/PanSN-spec):
 
 ```
 >{sample}#{haplotype}#{nama_sekuens}
 
-# Contoh:
+# Contoh kelapa sawit:
 >EGPMv6#1#GK000076.1
+
+# Contoh padi:
+>Nipponbare#1#Chr01
 ```
+
+Script untuk rename header:
+```bash
+# Contoh: rename header untuk sample "Nipponbare"
+sed -i 's/^>\(.*\)/>Nipponbare#1#\1/' data/Nipponbare/Nipponbare.fa
+```
+
+#### 3. Buat Samplesheet Baru
+
+Buat file `samplesheet_padi.csv`:
+
+```csv
+sample,fasta,cultivar
+Nipponbare,data/Nipponbare/Nipponbare.fa,Japonica
+IR64,data/IR64/IR64.fa,Indica
+Kasalath,data/Kasalath/Kasalath.fa,Aus
+```
+
+#### 4. Jalankan dengan Parameter Baru
+
+```bash
+nextflow run main.nf \
+    -profile conda \
+    --input samplesheet_padi.csv \
+    --reference_name Nipponbare \
+    --outdir results_padi/
+```
+
+> 💡 **Tips:**
+> - `--reference_name` harus diisi dengan assembly **terbaik** (level kromosom, N50 tertinggi)
+> - Assembly minimum yang dibutuhkan: **3** (1 referensi + 2 non-referensi)
+> - Nama sample di samplesheet harus **unik** dan **tanpa spasi/karakter khusus**
+> - Jangan lupa rename header FASTA ke PanSN-spec **sebelum** menjalankan pipeline
 
 ---
 
@@ -305,7 +444,7 @@ nf-pangenome-elaise/
 │   │   └── quast.nf                     # QUAST — output laporan kualitas
 │   ├── graph_construction/
 │   │   ├── minigraph.nf                 # SV-level graph
-│   │   └── cactus_minigraph.nf          # Base-level graph (output final)
+│   │   └── cactus_minigraph.nf          # Base-level graph (Docker container)
 │   ├── graph_analysis/
 │   │   ├── odgi.nf                      # odgi stats + odgi viz (1D layout)
 │   │   └── vg_stats.nf                  # vg stats — node, edge, length
@@ -315,14 +454,21 @@ nf-pangenome-elaise/
 ├── bin/
 │   └── extract_core_var.sh              # Bash script: core vs variable sequences
 │
-├── conf/                                # Konfigurasi HPC/Slurm terpisah
+├── conf/
+│   ├── test.config                      # Config laptop (2 CPU, 4GB RAM)
+│   └── hpc.config                       # Config HPC Mahameru (SLURM, 128 CPU)
+│
+├── data/                                # ← TARUH DATA ASSEMBLY DI SINI
+│   ├── EGPMv6/                          #   Assembly referensi (kromosom-level)
+│   ├── EG01/                            #   Assembly EG01
+│   ├── ASM167249v1/                     #   Assembly Dura
+│   ├── Eg-DCM/                          #   Assembly DCM
+│   └── EG11/                            #   Assembly EG11
 │
 ├── tests/
 │   ├── subset_real_data.py              # Buat subset dari genome asli
 │   └── test_data/                       # Subset kecil (masuk git)
-│       ├── EGPMv6.fa                    # 5 seq × 100kb — AVROS (kromosom-level)
-│       ├── EG01.fa                      # 5 seq × 100kb — EG01
-│       ├── ASM167249v1.fa               # 5 seq × 100kb — Dura
+│       ├── EGPMv6.fa, EG01.fa, ASM167249v1.fa
 │       └── samplesheet.csv
 │
 ├── 📊 PROGRESS.md                       # Checklist progress per tahap
