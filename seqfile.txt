@@ -1,0 +1,3 @@
+EG01	/home/bonkhead/nf-pangenome-elaise/work/63/a596fed0e5c79e247eeda7216a1215/EG01.filtered.fa
+ASM167249v1	/home/bonkhead/nf-pangenome-elaise/work/20/106924d77d53cb181b6473eec4cc2f/ASM167249v1.filtered.fa
+EGPMv6	/home/bonkhead/nf-pangenome-elaise/work/07/175d1c9f0884c58625857b8044bfd9/EGPMv6.filtered.fa

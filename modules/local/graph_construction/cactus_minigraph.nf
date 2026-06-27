@@ -14,7 +14,7 @@ process CACTUS_MINIGRAPH {
     tag "${meta.id}"
     label 'process_high'
 
-    // container 'quay.io/comparative-genomics-toolkit/cactus:v2.9.0'
+    container 'quay.io/comparative-genomics-toolkit/cactus:v2.9.0'
 
     input:
     tuple val(meta), path(seqfile), path(minigraph_gfa)
@@ -42,7 +42,7 @@ process CACTUS_MINIGRAPH {
         ${prefix}.full.gfa \\
         --reference ${ref_name} \\
         --mgCores ${task.cpus} \\
-        --mapCores ${task.cpus} \\
+        --binariesMode local \\
         ${args} \\
         2>&1 | tee ${prefix}.cactus.log
 

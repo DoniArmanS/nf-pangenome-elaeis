@@ -4,9 +4,8 @@
     Hickey et al. (2024) Nature Biotechnology
 
     Alur:
-      1. Buat seqFile dari semua assembly (format Cactus)
-      2. Minigraph   → initial structural graph (.gfa)
-      3. Cactus      → base-level pangenome graph (.full.gfa)
+      1. Minigraph   → initial SV-level graph (.gfa) dari referensi + assemblies
+      2. Cactus      → base-level pangenome graph (.full.gfa)
 ========================================================================================
 */
 
@@ -20,42 +19,51 @@ workflow GRAPH_CONSTRUCTION {
 
     main:
 
-    // ── Step 1: Tentukan referensi backbone ───────────────────────────────────
-    // Referensi = sample dengan params.reference_name (default: sample pertama)
-    // atau yang punya N50 tertinggi dari hasil QUAST
+    // ── Step 1: Pisahkan referensi backbone vs non-referensi ──────────────────
     ch_ref = ch_fasta
         .filter { meta, fasta -> meta.id == params.reference_name }
-        .first()
+        .first()   // [ ref_meta, ref_fasta ]
 
-    ch_others = ch_fasta
+    // Kumpulkan semua fasta non-referensi ke satu list
+    ch_other_fastas = ch_fasta
         .filter { meta, fasta -> meta.id != params.reference_name }
+        .map { meta, fasta -> fasta }
+        .collect()                    // [ [fasta1, fasta2, ...] ]
+        .toList()                     // pastikan jadi list
 
-    // ── Step 2: Build seqFile untuk Cactus ───────────────────────────────────
-    // Format: <sample_name>\t<path_fasta>  (referensi di baris pertama)
-    ch_all_fasta = ch_fasta.collect { meta, fasta -> "${meta.id}\t${fasta}" }
-
-    ch_seqfile = ch_all_fasta.map { lines ->
-        def content = lines.join('\n')
-        def seqfile = file("seqfile.txt")
-        seqfile.text = content + '\n'
-        return seqfile
-    }
-
-    // ── Step 3: Minigraph — initial SV-level graph ────────────────────────────
-    ch_assemblies = ch_others.map { meta, fasta -> fasta }.collect()
-
-    ch_minigraph_input = ch_ref.combine(ch_assemblies)
-        .map { ref_meta, ref_fasta, other_fastas ->
+    // ── Step 2: Minigraph — SV-level graph ────────────────────────────────────
+    // Gabungkan ref + others menjadi satu tuple
+    ch_minigraph_input = ch_ref
+        .combine(ch_other_fastas)
+        .map { items ->
             def meta = [ id: 'pangenome' ]
-            return [ meta, ref_fasta, other_fastas ]
+            def ref_fasta = items[1]       // ref fasta
+            def others = items[2..-1]      // sisanya = other fastas
+            if (others.size() == 1 && others[0] instanceof List) {
+                others = others[0]
+            }
+            return tuple( meta, ref_fasta, others )
         }
 
     MINIGRAPH(ch_minigraph_input)
 
-    // ── Step 4: Cactus-Minigraph — base-level graph ───────────────────────────
-    ch_cactus_input = ch_seqfile.combine(MINIGRAPH.out.gfa)
-        .map { seqfile, meta, gfa ->
-            return [ meta, seqfile, gfa ]
+    // ── Step 3: Buat seqFile untuk Cactus ─────────────────────────────────────
+    // Kumpulkan semua sample name + fasta path
+    ch_seqfile_data = ch_fasta
+        .map { meta, fasta -> "${meta.id}\t${fasta}" }
+        .collect()
+
+    ch_seqfile = ch_seqfile_data.map { lines ->
+        def f = file("${workDir}/seqfile.txt")
+        f.text = lines.join('\n') + '\n'
+        return f
+    }
+
+    // ── Step 4: Cactus-Minigraph — base-level graph ──────────────────────────
+    ch_cactus_input = MINIGRAPH.out.gfa
+        .combine(ch_seqfile)
+        .map { meta, gfa, seqfile ->
+            return tuple( meta, seqfile, gfa )
         }
 
     CACTUS_MINIGRAPH(ch_cactus_input)
