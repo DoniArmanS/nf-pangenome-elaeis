@@ -1,0 +1,6 @@
+sample,fasta,cultivar
+EG11,data/EG11/ncbi_dataset/data/GCA_000442705.2/GCA_000442705.2_EG11_genomic.fna,Tenera
+EGPMv6,data/EGPMv6/ncbi_dataset/data/GCA_015461965.1/GCA_015461965.1_EGPMv6_genomic.fna,AVROS
+ASM167249v1,data/ASM167249v1/ncbi_dataset/data/GCA_001672495.1/GCA_001672495.1_ASM167249v1_genomic.fna,Dura
+Eg-DCM,data/Eg-DCM/ncbi_dataset/data/GCA_966131455.1/GCA_966131455.1_Eg-DCM_assembly_v1_genomic.fna,DCM
+EG01,data/EG01/ncbi_dataset/data/GCA_002146295.1/GCA_002146295.1_EG01_genomic.fna,Jacq

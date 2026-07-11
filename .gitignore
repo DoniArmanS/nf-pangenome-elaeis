@@ -1,31 +1,31 @@
 # ==============================================================================
-# DATA & DOKUMEN SKRIPSI — JANGAN DI-COMMIT
+# nf-pangenome-elaise — .gitignore
 # ==============================================================================
-DATA SKRIPSI/
-PROPOSAL SKRIPSI/
-ProposalSkripsi/
+# Project ini tinggal clone & jalankan. File di bawah ini TIDAK masuk git
+# karena terlalu besar atau dibuat otomatis saat runtime.
+# ==============================================================================
 
-# ==============================================================================
-# NEXTFLOW RUNTIME
-# ==============================================================================
+# ── NEXTFLOW RUNTIME ─────────────────────────────────────────────────────────
 .nextflow/
 .nextflow.log*
 work/
 results/
+results_*/
 output/
 
-# ==============================================================================
-# CACTUS JOBSTORE (dibuat saat runtime)
-# ==============================================================================
+# ── DATA GENOME (terlalu besar, download sendiri dari NCBI) ──────────────────
+data/*/ncbi_dataset/
+data/*/md5sum.txt
+tests/medium_data/
+
+# ── CACTUS RUNTIME ───────────────────────────────────────────────────────────
 *_jobstore/
 jobstore*/
 *.hal
 *.c2h
 
-# ==============================================================================
-# FILE GENOME & BIOINFORMATIKA BESAR
-# (test_data/*.fa dikecualikan dari aturan ini — sengaja kecil & masuk git)
-# ==============================================================================
+# ── FILE BIOINFORMATIKA BESAR ────────────────────────────────────────────────
+# (tests/test_data/*.fa sengaja kecil & masuk git untuk testing)
 *.fa.gz
 *.fasta
 *.fasta.gz
@@ -52,25 +52,24 @@ jobstore*/
 *.fna
 *.fna.gz
 
-# ==============================================================================
-# ARCHIVE & DATASET BESAR
-# ==============================================================================
+# ── ARCHIVE ──────────────────────────────────────────────────────────────────
 *.zip
 *.tar
 *.tar.gz
 *.tar.bz2
 *.tgz
 
-# ==============================================================================
-# PIPELINE OUTPUT
-# ==============================================================================
+# ── DOKUMEN SKRIPSI (privat) ─────────────────────────────────────────────────
+DATA SKRIPSI/
+PROPOSAL SKRIPSI/
+ProposalSkripsi/
+
+# ── PIPELINE OUTPUT ──────────────────────────────────────────────────────────
 multiqc_report.html
 multiqc_data/
 pipeline_info/
 
-# ==============================================================================
-# PYTHON
-# ==============================================================================
+# ── PYTHON ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -78,32 +77,17 @@ __pycache__/
 .venv
 env/
 venv/
-*.conda
-*.yml.lock
-.ipynb_checkpoints/
 
-# ==============================================================================
-# R
-# ==============================================================================
-.Rhistory
-.RData
-*.Rout
-
-# ==============================================================================
-# SYSTEM & EDITOR
-# ==============================================================================
+# ── SYSTEM & EDITOR ─────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 *.swp
 *.swo
 *~
 .idea/
-.vscode/settings.json
-.vscode/launch.json
+.vscode/
 
-# ==============================================================================
-# LOG & TEMP
-# ==============================================================================
+# ── LOG & TEMP ───────────────────────────────────────────────────────────────
 *.log
 *.tmp
 *.temp
@@ -111,6 +95,7 @@ slurm-*.out
 sbatch-*.sh
 nohup.out
 
-# NCBI dataset folders (genome data terlalu besar)
-data/*/ncbi_dataset/
-data/*/md5sum.txt
+# ── FILE YANG DIBUAT OTOMATIS (tidak perlu di git) ───────────────────────────
+seqfile.txt
+install_tools.sh
+Browser pipeline info/
