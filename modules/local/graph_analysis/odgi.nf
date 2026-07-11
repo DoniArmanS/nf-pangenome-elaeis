@@ -24,10 +24,20 @@ process ODGI_STATS {
 
     """
     # Konversi rGFA/Cactus-GFA → standard GFA (odgi-compatible)
-    vg convert -g ${gfa} -p > ${prefix}.std.gfa 2>/dev/null || cp ${gfa} ${prefix}.std.gfa
+    # Step 1: convert rGFA → PackedGraph (vg format)
+    vg convert -g ${gfa} -p > ${prefix}.temp.vg 2>/dev/null
+
+    # Step 2: compact/sort node IDs agar < 2^63 (fix odgi assertion error)
+    vg ids -s ${prefix}.temp.vg
+
+    # Step 3: convert kembali ke GFA1 standard
+    vg convert -f ${prefix}.temp.vg > ${prefix}.std.gfa
+    rm -f ${prefix}.temp.vg
 
     # Convert GFA → ODGI binary format
-    odgi build -g ${prefix}.std.gfa -o ${prefix}.og -t ${task.cpus}
+    odgi build -g ${prefix}.std.gfa -o ${prefix}.unsorted.og -t ${task.cpus}
+    odgi sort  -i ${prefix}.unsorted.og -o ${prefix}.og -t ${task.cpus}
+    rm -f ${prefix}.unsorted.og
 
     # Hitung statistik dasar
     odgi stats -i ${prefix}.og -S -y > ${prefix}.stats.yaml
@@ -73,7 +83,15 @@ process ODGI_VIZ {
 
     """
     # Konversi rGFA/Cactus-GFA → standard GFA (odgi-compatible)
-    vg convert -g ${gfa} -p > ${prefix}.std.gfa 2>/dev/null || cp ${gfa} ${prefix}.std.gfa
+    # Step 1: convert rGFA → PackedGraph (vg format)
+    vg convert -g ${gfa} -p > ${prefix}.temp.vg 2>/dev/null
+
+    # Step 2: compact/sort node IDs agar < 2^63 (fix odgi assertion error)
+    vg ids -s ${prefix}.temp.vg
+
+    # Step 3: convert kembali ke GFA1 standard
+    vg convert -f ${prefix}.temp.vg > ${prefix}.std.gfa
+    rm -f ${prefix}.temp.vg
 
     odgi build -g ${prefix}.std.gfa -o ${prefix}.og -t ${task.cpus}
     odgi sort  -i ${prefix}.og -o ${prefix}.sorted.og -t ${task.cpus}

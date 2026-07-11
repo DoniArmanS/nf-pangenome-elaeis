@@ -3,6 +3,7 @@
 # ==============================================================================
 DATA SKRIPSI/
 PROPOSAL SKRIPSI/
+ProposalSkripsi/
 
 # ==============================================================================
 # NEXTFLOW RUNTIME
@@ -109,3 +110,7 @@ Thumbs.db
 slurm-*.out
 sbatch-*.sh
 nohup.out
+
+# NCBI dataset folders (genome data terlalu besar)
+data/*/ncbi_dataset/
+data/*/md5sum.txt

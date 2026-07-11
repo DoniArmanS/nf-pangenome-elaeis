@@ -1,5 +1,5 @@
 # 📋 Progress Skripsi — nf-pangenome-elaise
-> Terakhir diupdate: **2026-06-26**
+> Terakhir diupdate: **2026-07-11**
 > **Deadline Analisis: November 2026 | Komprehensif: Desember 2026**
 
 ---
@@ -8,20 +8,20 @@
 
 ```
 Infrastructure  ████████████████████  100%
-Tool Install    ████████████████████  100%  ← BARU SELESAI
-Preprocessing   ██████████████████░░   90%  (code ada, tool terinstall, belum ditest real)
-QC (QUAST)      ██████████████████░░   90%  (module + tool ada, belum ditest)
-Graph Construct ██████████████░░░░░░   70%  (module ada, minigraph ada, cactus belum)
-Graph Analysis  ████████████████░░░░   80%  (odgi + vg terinstall, belum ditest)
+Tool Install    ████████████████████  100%  ✅ SEMUA (termasuk Cactus Docker)
+Preprocessing   ████████████████████  100%  ✅ Tested dengan sample data
+QC (QUAST)      ████████████████████  100%  ✅ Tested dengan sample data
+Graph Construct ████████████████████  100%  ✅ Minigraph + Cactus BERHASIL
+Graph Analysis  ████████████████████  100%  ✅ odgi stats/viz + vg stats BERHASIL
 HPC/Slurm       ████████░░░░░░░░░░░░   40%  (config ada, belum implement di Mahameru)
-Testing & Eval  ██████░░░░░░░░░░░░░░   30%  (stub OK, real run belum)
+Testing & Eval  ██████████████░░░░░░   65%  ✅ Test data OK, belum full data
 Penulisan BAB   ██░░░░░░░░░░░░░░░░░░   10%  (metodologi draft)
 ─────────────────────────────────────────────
-TOTAL ANALISIS  ████████░░░░░░░░░░░░  ~40%
+TOTAL ANALISIS  ███████████░░░░░░░░░  ~55%
 ```
 
-> **Catatan:** Naik dari ~34% → ~40% setelah semua tools terinstall via conda.
-> Tool yang belum: **cactus-minigraph** (butuh Singularity/Docker image ~3GB).
+> **Catatan:** Naik dari ~40% → ~55% setelah pipeline berhasil dijalankan end-to-end
+> dengan sample data (3 assembly subset). Semua 8 step completed tanpa error.
 
 ---
 
@@ -38,18 +38,21 @@ TOTAL ANALISIS  ████████░░░░░░░░░░░░  ~4
 
 ---
 
-## ✅ Tool Installation — 100% SELESAI (kecuali Cactus)
+## ✅ Tool Installation — 100% SELESAI
 
 | Tool | Versi | Metode Install | Status |
 |------|-------|---------------|--------|
-| Nextflow | v26.04.4 | curl → `~/.local/bin` | ✅ |
-| Miniforge3 (conda + mamba) | latest | installer script | ✅ |
-| seqkit | v2.13.0 | `mamba install -c bioconda` | ✅ |
-| QUAST | v5.3.0 | `mamba install -c bioconda` | ✅ |
-| minigraph | 0.21-r606 | `mamba install -c bioconda` | ✅ |
-| odgi | v0.9.4 | `mamba install -c bioconda` | ✅ |
-| vg | v1.73.0 | `mamba install -c bioconda` | ✅ |
-| cactus-minigraph | — | Docker/Singularity image | ❌ Belum |
+| Nextflow | v25.10.4 | system install (`/usr/local/bin`) | ✅ |
+| Java (OpenJDK) | 21.0.11 | apt | ✅ |
+| Miniforge3 (conda) | latest | installer script | ✅ |
+| seqkit | v2.13.0 | `conda install -c bioconda` | ✅ |
+| QUAST | v5.3.0 | `conda install -c bioconda` | ✅ |
+| minigraph | 0.21-r606 | `conda install -c bioconda` | ✅ |
+| odgi | v0.9.4 | `conda install -c bioconda` | ✅ |
+| vg | v1.73.0 | `conda install -c bioconda` | ✅ |
+| samtools | 1.24 | `conda install -c bioconda` | ✅ |
+| cactus-minigraph | v2.9.0 | Docker image (1.07 GB) | ✅ |
+| Docker | v29.1.3 | apt | ✅ |
 
 > **Conda environment:** `pangenome` → `~/miniforge3/envs/pangenome/` (2.4 GB)
 > **Cara aktivasi:** `conda activate pangenome`
@@ -57,7 +60,7 @@ TOTAL ANALISIS  ████████░░░░░░░░░░░░  ~4
 
 ---
 
-## ✅ Kode Pipeline — Selesai (Belum Ditest dengan Tool Asli)
+## ✅ Kode Pipeline — Selesai & Tested dengan Sample Data
 
 ### Modules
 - [x] `modules/local/preprocessing/seqkit_stats.nf`
@@ -89,22 +92,57 @@ TOTAL ANALISIS  ████████░░░░░░░░░░░░  ~4
 
 ---
 
-## 🔄 Analisis — Tahap 1: Preprocessing
+## ✅ Test Run — Sample Data (3 Assembly Subset) — BERHASIL
 
-- [ ] Ekstrak semua 5 zip genome dari DATA SKRIPSI
-  - [x] EG01 — sudah diekstrak
-  - [x] ASM167249v1 — sudah diekstrak
-  - [x] EGPMv6 — sudah diekstrak
-  - [ ] EG11 — belum diekstrak (989MB zip)
-  - [ ] Eg-DCM — belum diekstrak
+> **Tanggal:** 2026-07-11
+> **Profile:** `-profile conda,test`
+> **Data:** 3 assembly subset (EGPMv6 495K, ASM167249v1 237K, EG01 29K)
+> **Hasil:** Semua 8 step/14 tasks berhasil, exit code 0
+
+| Step | Tasks | Status | Duration | Peak RAM |
+|------|-------|--------|----------|----------|
+| SEQKIT_STATS | 3/3 | ✅ | ~100ms | 25 MB |
+| SEQKIT_FILTER | 3/3 | ✅ | ~150ms | 43 MB |
+| QUAST | 3/3 | ✅ | 2.5s | 109 MB |
+| MINIGRAPH | 1/1 | ✅ | 81ms | 4 MB |
+| CACTUS_MINIGRAPH | 1/1 | ✅ | 19s | 227 MB |
+| VG_STATS | 1/1 | ✅ | 94ms | 4 MB |
+| ODGI_STATS | 1/1 | ✅ | 94ms | 4 MB |
+| ODGI_VIZ | 1/1 | ✅ | 107ms | 4 MB |
+
+**ODGI Stats output:**
+```yaml
+length: 500000
+nodes: 5
+edges: 0
+paths: 5
+steps: 5
+```
+
+### Bug Fix Applied:
+- **ODGI assertion error** (`number < 2^63`): Cactus GFA node ID terlalu besar untuk odgi.
+  Fix: tambah `vg ids -s` untuk compact node ID sebelum `odgi build`.
+  File: `modules/local/graph_analysis/odgi.nf`
+
+---
+
+## 🔄 Analisis — Tahap 1: Preprocessing (Data Asli)
+
+- [x] Ekstrak semua 5 zip genome dari DATA SKRIPSI
+  - [x] EG01 — sudah diekstrak (150M .fna)
+  - [x] ASM167249v1 — sudah diekstrak (503M .fna)
+  - [x] EGPMv6 — sudah diekstrak (1.2G .fna)
+  - [x] EG11 — sudah diekstrak (1.8G .fna)
+  - [x] Eg-DCM — sudah diekstrak (1.5G .fna)
 - [ ] Rename header FASTA ke PanSN-spec (`sample#hap#seq`)
-- [ ] Buat samplesheet.csv dari 5 assembly asli
+- [ ] Buat samplesheet.csv dari 5 assembly asli (path ke .fna)
 
 ---
 
 ## 🔄 Analisis — Tahap 2: Quality Control (QUAST)
 
 - [x] Install QUAST v5.3.0 ✅
+- [x] Test QUAST pada sample data ✅
 - [ ] Jalankan QUAST pada 5 assembly asli
 - [ ] Catat: N50, jumlah contig, total bp, GC% per assembly
 - [ ] Tentukan backbone referensi (N50 tertinggi / kromosom-level)
@@ -114,10 +152,11 @@ TOTAL ANALISIS  ████████░░░░░░░░░░░░  ~4
 ## 🔄 Analisis — Tahap 3: Konstruksi Pangenome Graph (Minigraph-Cactus)
 
 - [x] Install minigraph 0.21-r606 ✅
-- [ ] Install cactus-minigraph (Docker: `quay.io/comparative-genomics-toolkit/cactus`)
-- [ ] Jalankan minigraph dengan data test_data subset
-- [ ] Jalankan cactus-minigraph (via Docker) dengan data test_data subset
-- [ ] Verifikasi output GFA valid
+- [x] Install cactus-minigraph via Docker (v2.9.0, 1.07 GB) ✅
+- [x] Jalankan minigraph dengan data test_data subset ✅
+- [x] Jalankan cactus-minigraph (via Docker) dengan data test_data subset ✅
+- [x] Verifikasi output GFA valid ✅
+- [ ] Jalankan dengan data asli (5 assembly)
 
 ---
 
@@ -125,10 +164,11 @@ TOTAL ANALISIS  ████████░░░░░░░░░░░░  ~4
 
 - [x] Install odgi v0.9.4 ✅
 - [x] Install vg v1.73.0 ✅
-- [ ] Jalankan `odgi stats` → node, edge, path count
-- [ ] Jalankan `vg stats` → statistik graph
-- [ ] Jalankan `odgi viz` → visualisasi 1D
+- [x] Jalankan `odgi stats` → node, edge, path count ✅ (sample data)
+- [x] Jalankan `vg stats` → statistik graph ✅ (sample data)
+- [x] Jalankan `odgi viz` → visualisasi 1D ✅ (sample data)
 - [ ] Jalankan `bin/extract_core_var.sh` → core & variable sequences
+- [ ] Jalankan semua dengan data asli (5 assembly)
 
 ---
 
@@ -172,6 +212,11 @@ TOTAL ANALISIS  ████████░░░░░░░░░░░░  ~4
 | 2026-06-26 | Hapus dummy data generator → ganti dengan real genome subset |
 | 2026-06-26 | **Install semua tools via conda**: seqkit, QUAST, minigraph, odgi, vg |
 | 2026-06-26 | Tambah profile `conda` di `nextflow.config` |
+| 2026-07-11 | **Setup ulang di sistem baru** (dual-boot Linux) |
+| 2026-07-11 | Re-install Miniforge3 + conda env `pangenome` + samtools |
+| 2026-07-11 | Pull Docker image `cactus:v2.9.0` (1.07 GB) |
+| 2026-07-11 | **Fix ODGI assertion error**: tambah `vg ids -s` di `odgi.nf` |
+| 2026-07-11 | **🎉 Pipeline test run 100% berhasil** (8/8 step, exit 0) |
 
 ---
 
@@ -180,7 +225,7 @@ TOTAL ANALISIS  ████████░░░░░░░░░░░░  ~4
 | Bulan | Target | Status |
 |-------|--------|--------|
 | Juni 2026 | ✅ Setup repo, kode pipeline, install tools | ✅ SELESAI |
-| Juli 2026 | Preprocessing 5 assembly + test lokal dengan conda | 🔜 Berikutnya |
+| Juli 2026 | ✅ Setup sistem baru + test pipeline sample data | ✅ SELESAI (11 Juli) |
 | Agustus 2026 | QC QUAST + Minigraph-Cactus (data asli) | ⏳ |
 | September 2026 | Graph analysis + evaluasi statistik | ⏳ |
 | Oktober 2026 | Implementasi & benchmarking di HPC Mahameru | ⏳ |

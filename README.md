@@ -40,19 +40,20 @@ Pendekatan utama yang digunakan adalah **Minigraph-Cactus** (Hickey et al., 2024
 ```
 Infrastructure  ████████████████████  100%
 Tool Install    ████████████████████  100%
-Pipeline Code   ██████████████████░░   90%
+Pipeline Code   ████████████████████  100%  ✅ Tested
+Test Data Run   ████████████████████  100%  ✅ 8/8 Steps
 Real Data Run   ████░░░░░░░░░░░░░░░░   20%
 HPC Deployment  ████████░░░░░░░░░░░░   40%
 ─────────────────────────────────────────
-KESELURUHAN     ████████░░░░░░░░░░░░  ~40%
+KESELURUHAN     ███████████░░░░░░░░░  ~55%
 ```
 
 | Fase | Target Selesai | Status |
 |------|----------------|--------|
 | 🔧 Setup & Infrastruktur | Juni 2026 | ✅ Selesai |
-| 🧬 Install Tools (conda) | Juni 2026 | ✅ Selesai |
-| 📥 Preprocessing 5 Assembly | Juli 2026 | 🔜 Berikutnya |
-| 📊 QC (QUAST) + Graph Construction | Agustus 2026 | ⏳ |
+| 🧬 Install Tools (conda + Docker) | Juli 2026 | ✅ Selesai |
+| ✅ **Test Pipeline (sample data)** | **Juli 2026** | **✅ 8/8 Steps** |
+| 📥 Preprocessing 5 Assembly | Juli-Agustus 2026 | 🔜 Berikutnya |
 | 📈 Graph Analysis & Evaluasi | September 2026 | ⏳ |
 | 🖥️ HPC Mahameru Benchmarking | Oktober 2026 | ⏳ |
 | 📝 **DEADLINE ANALISIS** + BAB IV | **November 2026** | ⏳ |
