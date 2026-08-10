@@ -398,3 +398,196 @@ Ini kenapa kalau kamu lihat log Nextflow, kamu lihat banyak proses berjalan seka
 
 **Q: "Apa yang kamu lakukan saat menemukan error odgi assertion 134?"**
 > A: "Saya menemukan bahwa Cactus menghasilkan node ID yang melebihi batas internal ODGI (2^63). Solusinya adalah menambahkan langkah konversi menggunakan `vg ids -s` untuk melakukan kompaksi node ID sebelum data masuk ke ODGI. Fix ini saya implementasikan di `modules/local/graph_analysis/odgi.nf`."
+
+---
+
+## 🔬 Detail Setiap Subworkflow — Baris per Baris
+
+### `validate_input.nf` — Penjaga Pintu
+
+Subworkflow ini adalah yang **pertama jalan**. Tugasnya membaca `samplesheet.csv` dan memastikan semua file FASTA benar-benar ada di disk.
+
+```groovy
+Channel
+    .fromPath(params.input)       // baca path samplesheet.csv dari params
+    .splitCsv(header: true)       // baca sebagai CSV, baris pertama = header
+    .map { row ->
+        def meta  = [id: row.sample, cultivar: row.cultivar]
+        def fasta = file(row.fasta)
+        if (!fasta.exists()) error "File tidak ditemukan: ${fasta}"
+        return tuple(meta, fasta)
+    }
+```
+
+- `meta` adalah map (seperti dict Python) berisi `id` dan `cultivar`
+- `meta.id` dipakai sebagai nama di semua output — contoh: `EG11_quast/`, `EG11.stats.tsv`
+- Kalau file FASTA tidak ada → pipeline **error** sebelum mulai, tidak buang waktu
+
+---
+
+### `graph_construction.nf` — Jantung Pipeline
+
+```groovy
+// Pisahkan EG11 dari yang lain
+ch_ref = ch_fasta
+    .filter { meta, fasta -> meta.id == params.reference_name }
+    .first()
+
+// Kumpulkan semua non-referensi jadi 1 list
+ch_other_fastas = ch_fasta
+    .filter { meta, fasta -> meta.id != params.reference_name }
+    .map    { meta, fasta -> fasta }
+    .collect()   // ← titik sinkronisasi: tunggu SEMUA genome masuk dulu
+```
+
+- `.collect()` adalah kunci — tanpanya Minigraph tidak bisa menerima semua genome sekaligus
+- setelah collect, semua 4 genome non-referensi dikumpulkan jadi `[EGPMv6.fa, Eg-DCM.fa, ASM167249v1.fa, EG01.fa]`
+
+```groovy
+// Buat seqFile untuk Cactus (format: nama TAB path)
+ch_seqfile = ch_fasta
+    .map { meta, fasta -> "${meta.id}\t${fasta}" }
+    .collect()
+    .map { lines ->
+        def f = file("${workDir}/seqfile.txt")
+        f.text = lines.join('\n') + '\n'
+        return f
+    }
+```
+
+Isi `seqfile.txt` yang dihasilkan:
+```
+EG11    /path/to/EG11.filtered.fa
+EGPMv6  /path/to/EGPMv6.filtered.fa
+Eg-DCM  /path/to/Eg-DCM.filtered.fa
+ASM167249v1  /path/to/ASM167249v1.filtered.fa
+EG01    /path/to/EG01.filtered.fa
+```
+
+---
+
+## 🔧 Detail Module — Setiap Flag Dijelaskan
+
+### `minigraph.nf`
+
+```bash
+minigraph -cx ggs -t 8 ${reference} ${assemblies} > pangenome.gfa
+```
+
+| Flag | Artinya |
+|------|---------|
+| `-c` | output format GFA (bukan PAF) |
+| `-x ggs` | preset "genome graph" — mode khusus pangenome |
+| `-t 8` | pakai 8 CPU thread |
+| `${reference}` | EG11 harus **pertama** — jadi tulang punggung graph |
+| `${assemblies}` | 4 genome lain ditambahkan ke atas graph EG11 |
+
+**Output GFA:**
+```
+S  1  ATCGATCG     ← S = segment/node (ID, urutan DNA)
+L  1 + 2 + 0M      ← L = link/edge (sambungan antar node)
+P  EG11#1#chr1 1+,2+  ← P = path (jalur genome ini di graph)
+```
+
+### `cactus_minigraph.nf`
+
+```bash
+cactus-minigraph ${jobstore} ${seqfile} output.full.gfa \
+    --reference EG11 --mgCores 16 --binariesMode local \
+    2>&1 | tee pangenome.cactus.log
+```
+
+| Argumen | Artinya |
+|---------|---------|
+| `${jobstore}` | folder checkpoint — kalau gagal, bisa lanjut dari sini |
+| `${seqfile}` | file TSV berisi nama + path semua genome |
+| `--reference EG11` | genome backbone |
+| `--binariesMode local` | jalankan semua binary lokal (bukan cluster internal) |
+| `2>&1 \| tee *.log` | tampilkan di terminal DAN simpan ke log file |
+
+### `odgi.nf` — Kenapa 3 Langkah Konversi?
+
+```bash
+# 1. rGFA → vg PackedGraph
+vg convert -g ${gfa} -p > temp.vg
+
+# 2. Kompaksi node ID (BUG FIX yang kita buat!)
+vg ids -s temp.vg
+
+# 3. vg → GFA1 standard
+vg convert -f temp.vg > std.gfa
+```
+
+**Kenapa perlu ini?** Cactus output = rGFA (reference-based) dengan node ID bisa miliaran. ODGI crash jika node ID > 2^63. `vg ids -s` mengubah ID menjadi 1,2,3,4... yang kecil.
+
+```bash
+odgi build -g std.gfa -o graph.og      # GFA teks → binary (lebih cepat)
+odgi sort  -i graph.og -o sorted.og    # urutkan node untuk visualisasi optimal
+odgi stats -i graph.og -S -y > stats.yaml  # -S=summary, -y=YAML output
+odgi viz   -i sorted.og -o 1D.png -x 1500 -y 500  # gambar 1500x500px
+```
+
+---
+
+## 🖥️ Memahami SLURM di HPC Mahameru
+
+```bash
+#SBATCH --partition=medium-small  # antrian yang dipakai
+#SBATCH --cpus-per-task=32        # minta 32 CPU
+#SBATCH --mem=64G                 # minta 64 GB RAM
+#SBATCH --time=72:00:00           # batas waktu 3 hari
+```
+
+**Perintah SLURM penting:**
+```bash
+sbatch run_hpc.sh          # submit job
+squeue -u darman           # lihat status job
+scancel 12345              # batalkan job
+tail -f slurm-*.out        # pantau output live
+```
+
+---
+
+## 📁 Panduan Output — Apa yang Ada di `results/`
+
+```
+results/
+├── qc/{sample}_quast/
+│   ├── report.txt         ← statistik lengkap (N50, contig, GC%)
+│   ├── report.pdf         ← untuk skripsi BAB IV Tabel 4.1
+│   └── basic_stats/
+│       ├── Nx_plot.pdf    ← grafik N50
+│       └── GC_content_plot.pdf
+├── analysis/
+│   ├── pangenome.stats.yaml  ← nodes, edges, paths (Tabel 4.2)
+│   └── pangenome.1D.png      ← GAMBAR visualisasi (Gambar 4.1)
+└── pipeline_info/
+    ├── report.html        ← grafik CPU & RAM per proses (buka di browser)
+    ├── timeline.html      ← Gantt chart eksekusi
+    ├── dag.html           ← diagram alur pipeline
+    └── trace.tsv          ← data benchmarking (import ke Excel, Tabel 4.4)
+```
+
+**Cara baca N50:** Kalau N50 = 500,000 bp, artinya 50% total panjang genome tersusun dari contig yang panjangnya ≥ 500,000 bp. Makin besar N50, makin baik kualitas assembly.
+
+---
+
+## 💬 Pertanyaan Dosen Penguji — Lengkap
+
+**Q: "Kenapa Minigraph-Cactus, bukan PGGB?"**
+> A: "PGGB melakukan all-vs-all alignment — untuk 5 genome kelapa sawit (~750 MB × 5) bisa memakan waktu berminggu-minggu bahkan di HPC. Minigraph-Cactus menggunakan pendekatan reference-guided yang jauh lebih cepat (beberapa jam) dengan akurasi yang hampir setara, sesuai penelitian Hickey et al. 2024 di Nature Biotechnology."
+
+**Q: "Apa itu core dan variable genome?"**
+> A: "Core genome adalah segmen DNA yang ada di semua 5 kultivar — bagian 'wajib' kelapa sawit. Variable genome hanya ada di sebagian kultivar — mencerminkan variasi genetik unik tiap kultivar. Variable genome sering mengandung gen yang bertanggung jawab atas perbedaan fenotip seperti kandungan minyak."
+
+**Q: "Bagaimana menjamin reproducibility hasil?"**
+> A: "Tiga cara: pertama, semua tool dikunci pada versi spesifik di conda dan Docker. Kedua, semua parameter tersimpan di nextflow.config dan versions.yml. Ketiga, mekanisme -resume Nextflow memastikan kalau pipeline dijalankan ulang dengan input yang sama, hasilnya identik."
+
+**Q: "Kenapa ada dua tahap graph construction?"**
+> A: "Minigraph membangun SV-level graph dengan cepat — mendeteksi perbedaan struktural besar (>50 bp). Cactus lalu melakukan base-level alignment akurat menggunakan graph Minigraph sebagai panduan. Dua tahap ini adalah kontribusi utama paper Hickey et al. 2024 — lebih cepat dari all-vs-all tapi tetap akurat sampai level single nucleotide."
+
+**Q: "Apa yang terjadi kalau pipeline gagal di tengah?"**
+> A: "Nextflow punya mekanisme -resume. Semua hasil tersimpan di folder work/ dengan hash unik per proses. Saat dijalankan ulang, Nextflow cek cache — proses yang sudah selesai di-skip, hanya yang gagal diulang. Di HPC dengan Cactus yang butuh 6+ jam, fitur ini sangat kritis."
+
+**Q: "Bisa dipakai untuk organisme lain?"**
+> A: "Ya. Pipeline ini generik — yang perlu diubah hanya samplesheet.csv dan --reference_name. Tidak ada nama organisme yang hardcoded di kode pipeline. Ini keunggulan arsitektur modular nf-core yang kami terapkan."
