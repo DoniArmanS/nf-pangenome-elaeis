@@ -13,6 +13,7 @@ process CACTUS_MINIGRAPH {
 
     tag "${meta.id}"
     label 'process_high'
+    publishDir "${params.outdir}/graph", mode: 'copy'
 
     container 'quay.io/comparative-genomics-toolkit/cactus:v2.9.0'
 

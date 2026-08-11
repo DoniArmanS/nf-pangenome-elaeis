@@ -11,6 +11,7 @@ process ODGI_STATS {
 
     tag "${meta.id}"
     label 'process_medium'
+    publishDir "${params.outdir}/analysis", mode: 'copy'
 
     input:
     tuple val(meta), path(gfa)
@@ -70,6 +71,7 @@ process ODGI_VIZ {
 
     tag "${meta.id}"
     label 'process_medium'
+    publishDir "${params.outdir}/analysis", mode: 'copy'
 
     input:
     tuple val(meta), path(gfa)

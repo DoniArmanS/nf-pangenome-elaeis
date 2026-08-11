@@ -11,6 +11,7 @@ process VG_STATS {
 
     tag "${meta.id}"
     label 'process_medium'
+    publishDir "${params.outdir}/analysis", mode: 'copy'
 
     // container 'quay.io/biocontainers/vg:1.54.0--h607a9b5_0'
 

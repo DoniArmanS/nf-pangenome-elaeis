@@ -12,6 +12,7 @@ process QUAST {
 
     tag "${meta.id}"
     label 'process_medium'
+    publishDir "${params.outdir}/qc", mode: 'copy'
 
     // container 'quay.io/biocontainers/quast:5.2.0--py39pl5321h2add14b_1'
 
