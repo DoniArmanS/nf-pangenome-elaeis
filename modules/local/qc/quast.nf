@@ -25,13 +25,14 @@ process QUAST {
     path "versions.yml", emit: versions
 
     script:
-    def prefix = meta.id
+    def prefix    = meta.id
+    def min_contig = params.min_contig
     """
     quast.py \\
         ${fasta} \\
         --output-dir ${prefix}_quast \\
         --threads ${task.cpus} \\
-        --min-contig 500 \\
+        --min-contig ${min_contig} \\
         --no-html
 
     cat <<-END_VERSIONS > versions.yml

@@ -1,4 +1,4 @@
-# 📐 Nextflow Coding Principles — nf-pangenome-elaise
+# 📐 Nextflow Coding Principles — nf-pangenome-elaeis
 
 > Referensi cepat prinsip coding Nextflow (DSL2) yang dipakai di project ini.
 > Baca ini dulu sebelum nulis process atau workflow baru.
@@ -8,7 +8,7 @@
 ## 1. Struktur File (nf-core Convention)
 
 ```
-nf-pangenome-elaise/
+nf-pangenome-elaeis/
 ├── main.nf                    # Entry point — HANYA berisi workflow call
 ├── nextflow.config            # Semua config, params, profiles
 ├── modules/

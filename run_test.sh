@@ -7,7 +7,7 @@
 # ==============================================================================
 
 echo "============================================"
-echo "  nf-pangenome-elaise — Local Test Run"
+echo "  nf-pangenome-elaeis — Local Test Run"
 echo "============================================"
 
 # Bersihkan hasil lama kalau ada

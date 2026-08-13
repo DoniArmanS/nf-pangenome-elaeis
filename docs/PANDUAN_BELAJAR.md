@@ -1,4 +1,4 @@
-# 📚 Panduan Belajar Lengkap — nf-pangenome-elaise
+# 📚 Panduan Belajar Lengkap — nf-pangenome-elaeis
 
 > Dokumen ini adalah **buku saku** untuk memahami setiap file dan baris kode di proyek skripsi ini.
 > Tujuannya: kamu bisa menjawab pertanyaan dosen penguji dan paham betul apa yang kamu buat.
@@ -25,7 +25,7 @@ Bayangkan pipeline Nextflow kita adalah sebuah **Pabrik Pengolahan Genome**:
 ## 📂 Struktur Folder — Penjelasan Lengkap
 
 ```
-nf-pangenome-elaise/
+nf-pangenome-elaeis/
 │
 ├── 📄 main.nf                   ← PINTU GERBANG pipeline
 ├── 📄 nextflow.config           ← PENGATURAN resource & environment

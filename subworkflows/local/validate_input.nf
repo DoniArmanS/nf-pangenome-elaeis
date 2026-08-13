@@ -2,6 +2,14 @@
 ========================================================================================
     SUBWORKFLOW: VALIDATE_INPUT
     Validasi input: samplesheet CSV atau file FASTA tunggal
+
+    Kolom CSV yang diharapkan:
+        sample   — ID unik sample (contoh: EG11, EGPMv6)
+        fasta    — path ke file FASTA assembly
+        cultivar — nama kultivar/varietas (contoh: Tenera, AVROS, Dura)
+
+    Catatan: kolom 'assembler' TIDAK digunakan. Data input adalah assembly
+    yang sudah jadi (pre-assembled genome), bukan raw reads.
 ========================================================================================
 */
 
@@ -15,7 +23,7 @@ workflow VALIDATE_INPUT {
             .fromPath(params.input, checkIfExists: true)
             .splitCsv(header: true)
             .map { row ->
-                def meta = [ id: row.sample, assembler: row.assembler ?: 'unknown' ]
+                def meta = [ id: row.sample, cultivar: row.cultivar ?: 'unknown' ]
                 def fasta = file(row.fasta, checkIfExists: true)
                 return [ meta, fasta ]
             }

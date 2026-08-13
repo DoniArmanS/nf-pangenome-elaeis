@@ -2,10 +2,10 @@
 
 /*
 ========================================================================================
-    nf-pangenome-elaise
+    nf-pangenome-elaeis
 ========================================================================================
-    Nextflow DSL2 pipeline for Elaeis guineensis pangenome construction
-    and structural variant analysis using the PGGB approach.
+    Nextflow DSL2 pipeline untuk konstruksi pangenome Elaeis guineensis
+    menggunakan pendekatan Minigraph-Cactus (Hickey et al. 2024).
 
     Author  : Doni Arman.S (2303126086)
     Dept    : Informatika, Universitas Mulawarman
@@ -26,7 +26,7 @@ workflow {
 
     log.info """
     ╔══════════════════════════════════════════════════════════════════╗
-    ║       nf-pangenome-elaise  |  Elaeis guineensis Pangenome       ║
+    ║       nf-pangenome-elaeis  |  Elaeis guineensis Pangenome       ║
     ╚══════════════════════════════════════════════════════════════════╝
     Input    : ${params.input}
     Output   : ${params.outdir}

@@ -1,8 +1,8 @@
 # ==============================================================================
-# nf-pangenome-elaise — .gitignore
+# nf-pangenome-elaeis — .gitignore
 # ==============================================================================
 # Project ini tinggal clone & jalankan. File di bawah ini TIDAK masuk git
-# karena terlalu besar atau dibuat otomatis saat runtime.
+# karena terlalu besar, dibuat otomatis saat runtime, atau bersifat privat.
 # ==============================================================================
 
 # ── NEXTFLOW RUNTIME ─────────────────────────────────────────────────────────
@@ -59,10 +59,11 @@ jobstore*/
 *.tar.bz2
 *.tgz
 
-# ── DOKUMEN SKRIPSI (privat) ─────────────────────────────────────────────────
+# ── DOKUMEN SKRIPSI & PERCAKAPAN (privat, TIDAK masuk GitHub) ────────────────
 DATA SKRIPSI/
 PROPOSAL SKRIPSI/
 ProposalSkripsi/
+percakapandosen/
 
 # ── PIPELINE OUTPUT ──────────────────────────────────────────────────────────
 multiqc_report.html

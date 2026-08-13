@@ -23,15 +23,18 @@ process MINIGRAPH {
     path "versions.yml",           emit: versions
 
     script:
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    def args   = task.ext.args   ?: ""
+    def prefix    = task.ext.prefix ?: "${meta.id}"
+    def args      = task.ext.args   ?: ""
+    def preset    = params.mg_preset
+    def min_mapq  = params.mg_min_mapq
 
     """
     # Minigraph: reference-guided graph construction
-    # -cx ggs = mode pangenome graph (sequence-to-graph mapping)
+    # Preset dikontrol dari nextflow.config (params.mg_preset)
     minigraph \\
-        -cx ggs \\
+        -cx ${preset} \\
         -t ${task.cpus} \\
+        -q ${min_mapq} \\
         ${reference} \\
         ${assemblies} \\
         ${args} \\

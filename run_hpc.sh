@@ -22,7 +22,7 @@
 #SBATCH --time=72:00:00
 
 echo "============================================"
-echo "  nf-pangenome-elaise — HPC Mahameru Run"
+echo "  nf-pangenome-elaeis — HPC Mahameru Run"
 echo "  Start: $(date)"
 echo "  Node : $(hostname)"
 echo "  CPUs : $SLURM_CPUS_PER_TASK"
