@@ -1,17 +1,24 @@
 #!/bin/bash
 # ==============================================================================
-# run_hpc.sh — Jalankan pipeline di HPC Mahameru (SLURM)
+# run_hpc.sh — Jalankan pipeline di HPC Mahameru BRIN (SLURM)
 # ==============================================================================
-# Pastikan sudah:
-#   1. Upload data genome ke data/*/ncbi_dataset/...
-#   2. Install Nextflow & Singularity/Docker di HPC
-#   3. Conda env 'pangenome' sudah dibuat (atau pakai Singularity)
+# Prasyarat (semua sudah terpenuhi):
+#   ✅ 1. Nextflow    → ~/bin/nextflow
+#   ✅ 2. Java 21     → sdkman (~/.sdkman)
+#   ✅ 3. Conda env   → ~/miniforge3/envs/pangenome
+#   ✅ 4. Cactus .sif → ~/cactus_v2.9.0.sif
+#   ✅ 5. Data genome → data/EG11/, data/EGPMv6/, data/Eg-DCM/
 #
-# Jalankan:
+# Cara submit ke SLURM:
+#   cd ~/nf-pangenome-elaeis
 #   sbatch run_hpc.sh
+#
+# Monitor progress:
+#   squeue -u darman
+#   tail -f slurm-pangenome-<JOBID>.out
 # ==============================================================================
 
-#SBATCH --job-name=pangenome
+#SBATCH --job-name=pangenome-elaeis
 #SBATCH --output=slurm-pangenome-%j.out
 #SBATCH --error=slurm-pangenome-%j.err
 #SBATCH --partition=medium-small
@@ -21,33 +28,46 @@
 #SBATCH --mem=64G
 #SBATCH --time=72:00:00
 
-echo "============================================"
+echo "============================================================"
 echo "  nf-pangenome-elaeis — HPC Mahameru Run"
-echo "  Start: $(date)"
-echo "  Node : $(hostname)"
-echo "  CPUs : $SLURM_CPUS_PER_TASK"
-echo "  RAM  : $SLURM_MEM_PER_NODE MB"
-echo "============================================"
+echo "  Start : $(date)"
+echo "  Node  : $(hostname)"
+echo "  CPUs  : $SLURM_CPUS_PER_TASK"
+echo "  RAM   : ${SLURM_MEM_PER_NODE:-64000} MB"
+echo "============================================================"
 
-# Load modules (sesuaikan dengan HPC)
-# module load nextflow singularity
+# ── Load Singularity (tersedia via module di Mahameru) ──────────────────────
+module load singularity
 
-# Aktifkan conda
+# Singularity cache = home dir (lokasi cactus_v2.9.0.sif)
+export SINGULARITY_CACHEDIR=$HOME
+export NXF_SINGULARITY_CACHEDIR=$HOME
+
+# ── Aktifkan Java (sdkman) ──────────────────────────────────────────────────
+export SDKMAN_DIR="$HOME/.sdkman"
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+
+# ── Aktifkan Conda env pangenome ────────────────────────────────────────────
 source ~/miniforge3/etc/profile.d/conda.sh
 conda activate pangenome
 
-# Jalankan pipeline
-nextflow run main.nf \
-    -profile conda \
-    --input samplesheet.csv \
-    --reference_name EG11 \
-    --outdir results/ \
-    --max_cpus 32 \
-    --max_memory 64.GB \
-    --max_time 72.h \
-    --cactus_cores 16 \
-    -resume
+# ── Tambahkan Nextflow ke PATH ──────────────────────────────────────────────
+export PATH=$HOME/bin:$PATH
 
-echo "============================================"
+# ── Jalankan pipeline ───────────────────────────────────────────────────────
+nextflow run main.nf \
+    -profile conda,slurm \
+    --input samplesheet.csv \
+    --outdir results/ \
+    --cactus_cores 16 \
+    -resume \
+    -with-report results/pipeline_info/report.html \
+    -with-timeline results/pipeline_info/timeline.html \
+    -with-trace results/pipeline_info/trace.tsv
+
+echo "============================================================"
 echo "  Selesai: $(date)"
-echo "============================================"
+echo "  Hasil  : results/"
+echo "  Log    : slurm-pangenome-${SLURM_JOB_ID}.out"
+echo "============================================================"
+
