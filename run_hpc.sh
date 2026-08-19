@@ -27,6 +27,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=64G
 #SBATCH --time=72:00:00
+#SBATCH --nodelist=trembesi56
 
 echo "============================================================"
 echo "  nf-pangenome-elaeis — HPC Mahameru Run"
