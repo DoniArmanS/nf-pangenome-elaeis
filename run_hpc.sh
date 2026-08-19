@@ -60,7 +60,7 @@ nextflow run main.nf \
     --input samplesheet.csv \
     --outdir results/ \
     --cactus_cores 16 \
-    --call_variants true \
+    --call_variants false \
     -resume \
     -with-report results/pipeline_info/report.html \
     -with-timeline results/pipeline_info/timeline.html \
