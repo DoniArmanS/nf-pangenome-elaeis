@@ -24,7 +24,7 @@
 
 ## 🌴 Tentang Project Ini
 
-Pipeline ini mengotomatisasi seluruh proses konstruksi dan analisis **pangenome graph** dari 5 assembly *Elaeis guineensis* (kelapa sawit) yang tersedia di database publik NCBI. Diimplementasikan menggunakan **Nextflow DSL2** dan berjalan di **HPC Mahameru (BRIN)** dengan sistem penjadwalan **SLURM**.
+Pipeline ini mengotomatisasi seluruh proses konstruksi dan analisis **pangenome graph** dari 3 assembly *Elaeis guineensis* (kelapa sawit) yang tersedia di database publik NCBI. Diimplementasikan menggunakan **Nextflow DSL2** dan berjalan di **HPC Mahameru (BRIN)** dengan sistem penjadwalan **SLURM**.
 
 Pendekatan utama yang digunakan adalah **Minigraph-Cactus** (Hickey et al., 2024) — metode konstruksi pangenome yang menggunakan satu genom berkualitas tinggi (level kromosom) sebagai backbone referensi, kemudian mensejajarkan seluruh assembly lainnya terhadap graf tersebut untuk menangkap seluruh variasi genetik.
 
@@ -70,8 +70,8 @@ KESELURUHAN     ███████████░░░░░░░░░  ~5
 ```
   ┌─────────────────────────────────────────────────────────────┐
   │  INPUT                                                      │
-  │  samplesheet.csv — daftar 5 assembly FASTA kelapa sawit     │
-  │  (EGPMv6, EG01, ASM167249v1, Eg-DCM, EG11)                │
+  │  samplesheet.csv — daftar 3 assembly FASTA kelapa sawit     │
+  │  (EG11, EGPMv6, Eg-DCM)                                     │
   └──────────────────────────┬──────────────────────────────────┘
                              │
                              ▼
@@ -139,7 +139,7 @@ KESELURUHAN     ███████████░░░░░░░░░  ~5
 | `analysis/pangenome.stats.yaml` | Statistik graph: jumlah **node, edge, path** (odgi stats) |
 | `analysis/pangenome.vg_stats.txt` | Statistik graph via **vg stats** |
 | `analysis/pangenome.1D.png` | Visualisasi 1D layout pangenome (odgi viz) |
-| `analysis/core_sequences.txt` | Daftar sekuens **inti** (ada di semua 5 assembly) |
+| `analysis/core_sequences.txt` | Daftar sekuens **inti** (ada di semua 3 assembly) |
 | `analysis/variable_sequences.txt` | Daftar sekuens **variabel** (hanya sebagian assembly) |
 | `analysis/pangenome_summary.tsv` | Laporan statistik pangenome final |
 
@@ -266,22 +266,18 @@ Taruh file FASTA assembly ke folder `data/`:
 
 ```
 data/
-├── EGPMv6/         ← taruh EGPMv6.fa di sini (referensi backbone)
-├── EG01/           ← taruh EG01.fa di sini
-├── ASM167249v1/    ← taruh ASM167249v1.fa di sini
-├── Eg-DCM/         ← taruh EgDCM.fa di sini
-└── EG11/           ← taruh EG11.fa di sini
+├── EG11/           ← taruh EG11.fa di sini (referensi backbone)
+├── EGPMv6/         ← taruh EGPMv6.fa di sini
+└── Eg-DCM/         ← taruh EgDCM.fa di sini
 ```
 
 Lalu buat file `samplesheet.csv`:
 
 ```csv
 sample,fasta,cultivar
-EGPMv6,data/EGPMv6/EGPMv6.fa,AVROS
-EG01,data/EG01/EG01.fa,Jacq
-ASM167249v1,data/ASM167249v1/ASM167249v1.fa,Dura
-Eg-DCM,data/Eg-DCM/EgDCM.fa,DCM
 EG11,data/EG11/EG11.fa,Tenera
+EGPMv6,data/EGPMv6/EGPMv6.fa,AVROS
+Eg-DCM,data/Eg-DCM/EgDCM.fa,DCM
 ```
 
 > ⚠️ Nilai `sample` untuk backbone referensi **harus sama persis** dengan `--reference_name`
@@ -398,7 +394,6 @@ nextflow run main.nf \
 | `--min_contig` | `500` | Panjang minimum contig untuk QUAST |
 | `--mg_preset` | `ggs` | Minigraph preset (`ggs` = genome-to-graph) |
 | `--cactus_cores` | `8` | Jumlah CPU untuk cactus-minigraph |
-| `--call_variants` | `false` | Aktifkan variant calling (vg deconstruct) |
 | `--max_memory` | `16.GB` | Batas memori maksimum |
 | `--max_cpus` | `8` | Batas CPU maksimum |
 | `--max_time` | `24.h` | Batas waktu eksekusi |
@@ -427,15 +422,14 @@ nf-pangenome-elaise/
 ├── ⚙️ nextflow.config                    # Parameter, profile, resource
 │
 ├── workflows/
-│   └── pangenome.nf                     # Orkestrator utama (5 tahap)
+│   └── pangenome.nf                     # Orkestrator utama (4 tahap)
 │
 ├── subworkflows/local/
 │   ├── validate_input.nf                # Parsing & validasi samplesheet
 │   ├── preprocessing.nf                 # seqkit stats + filter
 │   ├── qc.nf                            # QUAST — QC assembly
 │   ├── graph_construction.nf            # Minigraph + Cactus
-│   ├── graph_analysis.nf                # odgi stats, vg stats, visualisasi
-│   └── variant_calling.nf              # vg deconstruct (opsional)
+│   └── graph_analysis.nf                # odgi stats, vg stats, visualisasi
 │
 ├── modules/local/
 │   ├── preprocessing/
@@ -446,11 +440,9 @@ nf-pangenome-elaise/
 │   ├── graph_construction/
 │   │   ├── minigraph.nf                 # SV-level graph
 │   │   └── cactus_minigraph.nf          # Base-level graph (Docker container)
-│   ├── graph_analysis/
-│   │   ├── odgi.nf                      # odgi stats + odgi viz (1D layout)
-│   │   └── vg_stats.nf                  # vg stats — node, edge, length
-│   └── variant_calling/
-│       └── vg_deconstruct.nf
+│   └── graph_analysis/
+│       ├── odgi.nf                      # odgi stats + odgi viz (1D layout)
+│       └── vg_stats.nf                  # vg stats — node, edge, length
 │
 ├── bin/
 │   └── extract_core_var.sh              # Bash script: core vs variable sequences
@@ -460,11 +452,9 @@ nf-pangenome-elaise/
 │   └── hpc.config                       # Config HPC Mahameru (SLURM, 128 CPU)
 │
 ├── data/                                # ← TARUH DATA ASSEMBLY DI SINI
-│   ├── EGPMv6/                          #   Assembly referensi (kromosom-level)
-│   ├── EG01/                            #   Assembly EG01
-│   ├── ASM167249v1/                     #   Assembly Dura
-│   ├── Eg-DCM/                          #   Assembly DCM
-│   └── EG11/                            #   Assembly EG11
+│   ├── EG11/                            #   Assembly referensi (kromosom-level)
+│   ├── EGPMv6/                          #   Assembly EGPMv6
+│   └── Eg-DCM/                          #   Assembly DCM
 │
 ├── tests/
 │   ├── subset_real_data.py              # Buat subset dari genome asli
@@ -488,7 +478,7 @@ nf-pangenome-elaise/
 | [minigraph](https://github.com/lh3/minigraph) | Konstruksi SV-level pangenome graph | Li et al. 2020 |
 | [cactus-minigraph](https://github.com/ComparativeGenomicsToolkit/cactus) | Base-level pangenome graph | Hickey et al. 2024 |
 | [odgi](https://odgi.readthedocs.io) | Statistik & visualisasi graph (odgi stats, odgi viz) | Guarracino et al. |
-| [vg](https://github.com/vgteam/vg) | Statistik graph (vg stats) & variant calling | Garrison et al. |
+| [vg](https://github.com/vgteam/vg) | Statistik graph (vg stats) | Garrison et al. |
 | [seqkit](https://bioinf.shenwei.me/seqkit) | Preprocessing FASTA (stats & filter) | Shen et al. |
 
 **Referensi utama:**

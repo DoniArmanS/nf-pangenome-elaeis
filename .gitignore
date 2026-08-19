@@ -17,6 +17,7 @@ output/
 data/*/ncbi_dataset/
 data/*/md5sum.txt
 tests/medium_data/
+data_bench/
 
 # ── CACTUS RUNTIME ───────────────────────────────────────────────────────────
 *_jobstore/
@@ -64,6 +65,10 @@ DATA SKRIPSI/
 PROPOSAL SKRIPSI/
 ProposalSkripsi/
 percakapandosen/
+results/
+pangenome_results/
+
+
 
 # ── PIPELINE OUTPUT ──────────────────────────────────────────────────────────
 multiqc_report.html

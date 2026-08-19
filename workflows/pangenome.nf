@@ -5,7 +5,7 @@
 
     Alur:
       Input FASTA → Preprocessing → QC (QUAST) → Minigraph-Cactus Graph
-      → Analisis Graph (odgi/vg) → [opsional] Variant Calling
+      → Analisis Graph (odgi/vg)
 ========================================================================================
 */
 
@@ -14,7 +14,6 @@ include { PREPROCESSING      } from '../subworkflows/local/preprocessing'
 include { QC                 } from '../subworkflows/local/qc'
 include { GRAPH_CONSTRUCTION } from '../subworkflows/local/graph_construction'
 include { GRAPH_ANALYSIS     } from '../subworkflows/local/graph_analysis'
-include { VARIANT_CALLING    } from '../subworkflows/local/variant_calling'
 
 workflow PANGENOME_WORKFLOW {
 
@@ -38,11 +37,6 @@ workflow PANGENOME_WORKFLOW {
 
     // ── Step 4: Analisis Graph (odgi stats + visualisasi) ─────────────────────
     GRAPH_ANALYSIS(ch_graph)
-
-    // ── Step 5: Variant Calling / vg stats (opsional) ────────────────────────
-    if (params.call_variants && params.reference_name) {
-        VARIANT_CALLING(ch_graph)
-    }
 
     emit:
     gfa    = ch_graph

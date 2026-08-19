@@ -204,7 +204,7 @@ python3 tests/dummy_data/generate_dummy.py
 | `smoothxg` | Graph normalization | `bioconda::smoothxg` |
 | `gfaffix` | Redundancy reduction | `bioconda::gfaffix` |
 | `odgi` | Graph analysis & viz | `bioconda::odgi` |
-| `vg` | Variant calling | `bioconda::vg` |
+| `vg` | Graph stats | `bioconda::vg` |
 | `seqkit` | FASTA stats & filter | `bioconda::seqkit` |
 | `MultiQC` | Aggregate QC report | `bioconda::multiqc` |
 

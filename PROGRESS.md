@@ -70,7 +70,6 @@ TOTAL ANALISIS  ███████████░░░░░░░░░  ~5
 - [x] `modules/local/graph_construction/cactus_minigraph.nf`
 - [x] `modules/local/graph_analysis/odgi.nf` (ODGI_STATS + ODGI_VIZ)
 - [x] `modules/local/graph_analysis/vg_stats.nf`
-- [x] `modules/local/variant_calling/vg_deconstruct.nf`
 
 ### Subworkflows
 - [x] `subworkflows/local/validate_input.nf`
@@ -78,7 +77,6 @@ TOTAL ANALISIS  ███████████░░░░░░░░░  ~5
 - [x] `subworkflows/local/qc.nf`
 - [x] `subworkflows/local/graph_construction.nf` (Minigraph-Cactus)
 - [x] `subworkflows/local/graph_analysis.nf` (odgi + vg stats)
-- [x] `subworkflows/local/variant_calling.nf`
 
 ### Workflow Utama
 - [x] `workflows/pangenome.nf` — 5 tahap sesuai proposal
@@ -217,6 +215,7 @@ steps: 5
 | 2026-07-11 | Pull Docker image `cactus:v2.9.0` (1.07 GB) |
 | 2026-07-11 | **Fix ODGI assertion error**: tambah `vg ids -s` di `odgi.nf` |
 | 2026-07-11 | **🎉 Pipeline test run 100% berhasil** (8/8 step, exit 0) |
+| 2026-08-19 | **Hapus Variant Calling** — module, subworkflow, param `call_variants` dihapus total dari pipeline |
 
 ---
 

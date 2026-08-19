@@ -11,7 +11,8 @@
 #
 # Cara submit ke SLURM:
 #   cd ~/nf-pangenome-elaeis
-#   sbatch run_hpc.sh
+#   sbatch run_hpc.sh                                             ← run production penuh
+#   sbatch run_hpc.sh data_bench/10MB/samplesheet.csv results_bench_10MB/   ← run skala resource
 #
 # Monitor progress:
 #   squeue -u darman
@@ -27,7 +28,6 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=64G
 #SBATCH --time=72:00:00
-#SBATCH --nodelist=trembesi56
 
 echo "============================================================"
 echo "  nf-pangenome-elaeis — HPC Mahameru Run"
@@ -55,21 +55,25 @@ conda activate pangenome
 # ── Tambahkan Nextflow ke PATH ──────────────────────────────────────────────
 export PATH=$HOME/bin:$PATH
 
+# ── Input/output — default ke run produksi penuh, bisa dioverride ───────────
+#   sbatch run_hpc.sh <samplesheet.csv> <outdir/>
+SAMPLESHEET="${1:-samplesheet.csv}"
+OUTDIR="${2:-results/}"
+
 # ── Jalankan pipeline ───────────────────────────────────────────────────────
 nextflow run main.nf \
     -profile conda,slurm \
-    --input samplesheet.csv \
-    --outdir results/ \
+    --input "$SAMPLESHEET" \
+    --outdir "$OUTDIR" \
     --cactus_cores 16 \
-    --call_variants false \
     -resume \
-    -with-report results/pipeline_info/report.html \
-    -with-timeline results/pipeline_info/timeline.html \
-    -with-trace results/pipeline_info/trace.tsv
+    -with-report "${OUTDIR}/pipeline_info/report.html" \
+    -with-timeline "${OUTDIR}/pipeline_info/timeline.html" \
+    -with-trace "${OUTDIR}/pipeline_info/trace.tsv"
 
 echo "============================================================"
 echo "  Selesai: $(date)"
-echo "  Hasil  : results/"
+echo "  Hasil  : ${OUTDIR}"
 echo "  Log    : slurm-pangenome-${SLURM_JOB_ID}.out"
 echo "============================================================"
 

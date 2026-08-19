@@ -41,8 +41,7 @@ nf-pangenome-elaeis/
 │   ├── preprocessing.nf
 │   ├── qc.nf
 │   ├── graph_construction.nf
-│   ├── graph_analysis.nf
-│   └── variant_calling.nf
+│   └── graph_analysis.nf
 │
 ├── 📁 modules/local/            ← MESIN ASLI (1 file = 1 tool bioinformatika)
 │   ├── preprocessing/
@@ -190,13 +189,6 @@ workflow PANGENOME_WORKFLOW {
     GRAPH_ANALYSIS(ch_graph)
 ```
 > QC dan GRAPH_CONSTRUCTION keduanya menerima `ch_clean`. Keduanya akan **berjalan paralel** secara otomatis karena tidak saling bergantung! Ini keunggulan Nextflow.
-
-```groovy
-    if (params.call_variants && params.reference_name) {
-        VARIANT_CALLING(ch_graph)
-    }
-```
-> Variant Calling bersifat opsional — hanya jalan kalau kamu set parameter `--call_variants`.
 
 ---
 
