@@ -100,3 +100,9 @@ nohup.out
 seqfile.txt
 install_tools.sh
 Browser pipeline info/
+
+# ── AI ASSISTANT & CLAUDE CODE ───────────────────────────────────────────────
+CLAUDE.md
+SKILLS.md
+skills-lock.json
+.claude/
