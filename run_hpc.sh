@@ -6,7 +6,8 @@
 #   ✅ 1. Nextflow    → ~/bin/nextflow
 #   ✅ 2. Java 21     → sdkman (~/.sdkman)
 #   ✅ 3. Conda env   → ~/miniforge3/envs/pangenome
-#   ✅ 4. Cactus .sif → ~/cactus_v2.9.0.sif
+#   ✅ 4. Cactus     → ~/cactus-bin-v2.9.0/venv-cactus-v2.9.0 (native install, bukan container —
+#                       Singularity gagal "unknown userid" di beberapa node, lihat CLAUDE.md)
 #   ✅ 5. Data genome → data/EG11/, data/EGPMv6/, data/Eg-DCM/
 #
 # Cara submit ke SLURM:
@@ -37,13 +38,6 @@ echo "  Node  : $(hostname)"
 echo "  CPUs  : $SLURM_CPUS_PER_TASK"
 echo "  RAM   : ${SLURM_MEM_PER_NODE:-64000} MB"
 echo "============================================================"
-
-# ── Load Singularity (tersedia via module di Mahameru) ──────────────────────
-module load singularity
-
-# Singularity cache = home dir (lokasi cactus_v2.9.0.sif)
-export SINGULARITY_CACHEDIR=$HOME
-export NXF_SINGULARITY_CACHEDIR=$HOME
 
 # ── Aktifkan Java (sdkman) ──────────────────────────────────────────────────
 export SDKMAN_DIR="$HOME/.sdkman"
