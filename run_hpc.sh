@@ -14,6 +14,13 @@
 #   cd ~/nf-pangenome-elaeis
 #   sbatch run_hpc.sh                                             ← run production penuh
 #   sbatch run_hpc.sh data_bench/10MB/samplesheet.csv results_bench_10MB/   ← run skala resource
+#   sbatch run_hpc.sh data_bench/10MB/samplesheet.csv results_bench_10MB_run2/ noresume
+#                                                                  ← run ULANG tanpa -resume, buat
+#                                                                    ukur variasi runtime (3x run per
+#                                                                    ukuran benchmark). Tanpa "noresume"
+#                                                                    di argumen ke-3, Nextflow default
+#                                                                    pakai -resume dan bisa nge-skip
+#                                                                    task via cache kalau hash sama.
 #
 # Monitor progress:
 #   squeue -u darman
@@ -51,9 +58,18 @@ conda activate pangenome
 export PATH=$HOME/bin:$PATH
 
 # ── Input/output — default ke run produksi penuh, bisa dioverride ───────────
-#   sbatch run_hpc.sh <samplesheet.csv> <outdir/>
+#   sbatch run_hpc.sh <samplesheet.csv> <outdir/> [noresume]
 SAMPLESHEET="${1:-samplesheet.csv}"
 OUTDIR="${2:-results/}"
+RESUME_MODE="${3:-resume}"
+
+# ── Matikan -resume kalau diminta (run ulang murni buat ukur variasi runtime,
+#    bukan reuse cache dari run sebelumnya) ──────────────────────────────────
+RESUME_ARG="-resume"
+if [ "$RESUME_MODE" = "noresume" ]; then
+    RESUME_ARG=""
+    echo "  Mode   : NO-RESUME (run ulang murni, cache diabaikan)"
+fi
 
 # ── Jalankan pipeline ───────────────────────────────────────────────────────
 nextflow run main.nf \
@@ -61,7 +77,7 @@ nextflow run main.nf \
     --input "$SAMPLESHEET" \
     --outdir "$OUTDIR" \
     --cactus_cores 16 \
-    -resume \
+    $RESUME_ARG \
     -with-report "${OUTDIR}/pipeline_info/report.html" \
     -with-timeline "${OUTDIR}/pipeline_info/timeline.html" \
     -with-trace "${OUTDIR}/pipeline_info/trace.tsv"
