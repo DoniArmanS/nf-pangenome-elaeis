@@ -15,7 +15,7 @@
 **menggunakan Minigraph-Cactus pada infrastruktur HPC**
 
 [![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A523.04.0-23aa62?style=flat-square&logo=nextflow)](https://www.nextflow.io/)
-![Status](https://img.shields.io/badge/status-in%20development-orange?style=flat-square)
+![Status](https://img.shields.io/badge/status-produksi%20%26%20benchmark%20selesai-brightgreen?style=flat-square)
 [![Genome](https://img.shields.io/badge/spesies-Elaeis%20guineensis-green?style=flat-square)](https://www.ncbi.nlm.nih.gov/datasets/taxonomy/51953/)
 
 </div>
@@ -31,32 +31,33 @@ Pendekatan utama yang digunakan adalah **Minigraph-Cactus** (Hickey et al., 2024
 > **Tujuan penelitian:**
 > 1. Merancang arsitektur pipeline pangenome kelapa sawit yang terotomatisasi dengan Nextflow
 > 2. Mengimplementasikan pipeline di HPC Mahameru dengan optimasi alokasi sumber daya Slurm
-> 3. Mengevaluasi efisiensi pipeline berdasarkan runtime, penggunaan CPU, dan memori
+> 3. Mengevaluasi efisiensi pipeline berdasarkan runtime, penggunaan CPU, dan memori, serta merekomendasikan alokasi sumber daya yang optimal berdasarkan data empiris (bukan sekadar over-provisioning)
 
 ---
 
 ## 📊 Progress & Timeline
 
 ```
-Infrastructure  ████████████████████  100%
-Tool Install    ████████████████████  100%
-Pipeline Code   ████████████████████  100%  ✅ Tested
-Test Data Run   ████████████████████  100%  ✅ 8/8 Steps
-Real Data Run   ████░░░░░░░░░░░░░░░░   20%
-HPC Deployment  ████████░░░░░░░░░░░░   40%
-─────────────────────────────────────────
-KESELURUHAN     ███████████░░░░░░░░░  ~55%
+Infrastructure     ████████████████████  100%
+Tool Install       ████████████████████  100%  ✅ (Cactus: native binary di HPC)
+Pipeline Code      ████████████████████  100%  ✅ Tested end-to-end
+Real Data Run      ████████████████████  100%  ✅ Produksi penuh (32 core / 64GB)
+HPC Deployment     ████████████████████  100%  ✅ SLURM + native Cactus
+Resource Benchmark ████████████████████  100%  ✅ 7 titik ukuran, 3x pengulangan
+Penulisan BAB IV   ████████████████████  100%  ✅
+─────────────────────────────────────────────────
+KESELURUHAN        ███████████████████░   ~90%
 ```
 
 | Fase | Target Selesai | Status |
 |------|----------------|--------|
 | 🔧 Setup & Infrastruktur | Juni 2026 | ✅ Selesai |
-| 🧬 Install Tools (conda + Docker) | Juli 2026 | ✅ Selesai |
+| 🧬 Install Tools (conda + Cactus) | Juli 2026 | ✅ Selesai |
 | ✅ **Test Pipeline (sample data)** | **Juli 2026** | **✅ 8/8 Steps** |
-| 📥 Preprocessing 5 Assembly | Juli-Agustus 2026 | 🔜 Berikutnya |
-| 📈 Graph Analysis & Evaluasi | September 2026 | ⏳ |
-| 🖥️ HPC Mahameru Benchmarking | Oktober 2026 | ⏳ |
-| 📝 **DEADLINE ANALISIS** + BAB IV | **November 2026** | ⏳ |
+| 🖥️ Deployment & Eksekusi Produksi di HPC Mahameru | Agustus 2026 | ✅ Selesai |
+| 📊 Benchmark Resource-Aware & Modul Rekomendasi | Agustus 2026 | ✅ Selesai |
+| 📝 Penulisan BAB IV | Agustus 2026 | ✅ Selesai |
+| 📝 **DEADLINE ANALISIS** + Penulisan Lengkap | **November 2026** | ⏳ |
 | 🎓 **KOMPREHENSIF** | **Desember 2026** | ⏳ |
 
 > Lihat detail progress lengkap di [`PROGRESS.md`](PROGRESS.md)
@@ -99,18 +100,16 @@ KESELURUHAN     ███████████░░░░░░░░░  ~5
                              ▼
   ┌─────────────────────────────────────────────────────────────┐
   │  TAHAP 4: Evaluasi & Statistik Pangenome                    │
-  │  ├─ odgi stats → node, edge, path count                    │
+  │  ├─ odgi stats → node, edge, path, step count               │
   │  ├─ vg stats   → statistik graph level vg                  │
-  │  ├─ odgi viz   → visualisasi 1D layout                     │
-  │  └─ extract_core_var.sh (Bash Script)                      │
-  │       → core sequences   (ada di semua individu)           │
-  │       → variable sequences (hanya sebagian individu)       │
+  │  └─ odgi viz   → visualisasi 1D layout                     │
   └──────────────────────────┬──────────────────────────────────┘
                              │
                              ▼
   ┌─────────────────────────────────────────────────────────────┐
   │  OUTPUT AKHIR                                               │
-  │  Laporan statistik pangenome kelapa sawit lengkap          │
+  │  Statistik pangenome + trace.tsv → rekomendasi alokasi      │
+  │  sumber daya (bin/recommend_resources.sh)                   │
   └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -136,12 +135,9 @@ KESELURUHAN     ███████████░░░░░░░░░  ~5
 
 | File | Keterangan |
 |------|-----------|
-| `analysis/pangenome.stats.yaml` | Statistik graph: jumlah **node, edge, path** (odgi stats) |
-| `analysis/pangenome.vg_stats.txt` | Statistik graph via **vg stats** |
+| `analysis/pangenome.stats.yaml` | Statistik graph: **length, node, edge, path, step** (odgi stats) |
+| `analysis/pangenome.vg_stats.txt` | Statistik graph via **vg stats** (node & edge count) |
 | `analysis/pangenome.1D.png` | Visualisasi 1D layout pangenome (odgi viz) |
-| `analysis/core_sequences.txt` | Daftar sekuens **inti** (ada di semua 3 assembly) |
-| `analysis/variable_sequences.txt` | Daftar sekuens **variabel** (hanya sebagian assembly) |
-| `analysis/pangenome_summary.tsv` | Laporan statistik pangenome final |
 
 ### ⚡ Laporan Eksekusi Pipeline (Nextflow)
 
@@ -151,6 +147,16 @@ KESELURUHAN     ███████████░░░░░░░░░  ~5
 | `pipeline_info/timeline.html` | Grafik timeline eksekusi visual |
 | `pipeline_info/trace.tsv` | Tabel penggunaan CPU & memori per proses |
 | `pipeline_info/dag.html` | Grafik alur pipeline (DAG — Directed Acyclic Graph) |
+
+### 🎯 Rekomendasi Alokasi Sumber Daya
+
+Setelah pipeline selesai, `bin/recommend_resources.sh` bisa dijalankan terhadap `trace.tsv` hasil eksekusi untuk menghasilkan rekomendasi jumlah CPU core dan RAM untuk run berikutnya, berdasarkan penggunaan aktual (bukan tebakan):
+
+```bash
+bin/recommend_resources.sh results/pipeline_info/trace.tsv
+```
+
+Rekomendasi dihitung dari nilai `%cpu` dan `peak_rss` tertinggi di seluruh task pada trace, ditambah margin keamanan 20% untuk RAM.
 
 ---
 
@@ -245,13 +251,15 @@ conda activate pangenome
 mamba install -y -c bioconda -c conda-forge seqkit quast minigraph odgi vg
 ```
 
-#### Step 3 — Install Cactus (Docker)
+#### Step 3 — Install Cactus
 
 ```bash
-# Cactus hanya tersedia via Docker image (~1GB)
+# Untuk profile local/docker/conda: Cactus tersedia via Docker image (~1GB)
 sudo usermod -aG docker $USER   # pertama kali saja, lalu restart/logout
 docker pull quay.io/comparative-genomics-toolkit/cactus:v2.9.0
 ```
+
+> ⚠️ **Khusus HPC Mahameru:** container Singularity untuk Cactus gagal di sejumlah node HPC (galat `unknown userid`, akibat cache SSSD/LDAP yang tidak konsisten). Solusinya, profile `slurm` menjalankan Cactus sebagai **instalasi biner native** (bukan container) — lihat `conf/hpc.config` (`beforeScript` mengaktifkan virtual environment di `~/cactus-bin-v2.9.0/`).
 
 #### Step 4 — Clone Repository
 
@@ -301,10 +309,16 @@ nextflow run main.nf \
     --outdir results/
 
 # ═══════════════════════════════════════════════════
-# Opsi C: HPC Mahameru (SLURM + Singularity)
+# Opsi C: HPC Mahameru (SLURM + Cactus native install)
 # ═══════════════════════════════════════════════════
+# Direkomendasikan: submit lewat run_hpc.sh (sudah membawa -with-report/
+# -with-timeline/-with-trace dan alokasi #SBATCH 32 core / 64GB)
+sbatch run_hpc.sh                              # run produksi penuh (samplesheet.csv → results/)
+sbatch run_hpc.sh samplesheet_lain.csv out_lain/   # override input/output
+
+# Atau manual:
 nextflow run main.nf \
-    -profile slurm \
+    -profile conda,slurm \
     --input /path/to/samplesheet.csv \
     --reference_name EGPMv6 \
     --outdir /scratch/results/ \
@@ -389,11 +403,12 @@ nextflow run main.nf \
 |-----------|---------|------------|
 | `--input` | `null` | Path ke samplesheet CSV |
 | `--outdir` | `./results` | Direktori output |
-| `--reference_name` | `null` | **Wajib** — nama sample backbone referensi |
+| `--reference_name` | `EG11` | **Wajib** — nama sample backbone referensi |
 | `--min_seq_len` | `500` | Panjang minimum sekuens (filter seqkit) |
 | `--min_contig` | `500` | Panjang minimum contig untuk QUAST |
 | `--mg_preset` | `ggs` | Minigraph preset (`ggs` = genome-to-graph) |
-| `--cactus_cores` | `8` | Jumlah CPU untuk cactus-minigraph |
+| `--mg_min_mapq` | `5` | Ambang batas kualitas pemetaan minimum minigraph |
+| `--cactus_cores` | `8` | Jumlah CPU untuk cactus-minigraph (override via `run_hpc.sh`: 16) |
 | `--max_memory` | `16.GB` | Batas memori maksimum |
 | `--max_cpus` | `8` | Batas CPU maksimum |
 | `--max_time` | `24.h` | Batas waktu eksekusi |
@@ -408,7 +423,7 @@ nextflow run main.nf \
 | `conda` | local | Conda env | **Direkomendasikan** — pakai env `pangenome` |
 | `docker` | local | Docker | Pengembangan lokal dengan container |
 | `singularity` | local | Singularity | HPC-compatible |
-| `slurm` | Slurm | Singularity | **HPC Mahameru BRIN** |
+| `slurm` | Slurm | Conda (Cactus: native binary, bukan container) | **HPC Mahameru BRIN** — pakai `-profile conda,slurm` |
 | `test` | local | — | Data subset real, resource dikurangi |
 
 ---
@@ -420,9 +435,10 @@ nf-pangenome-elaise/
 │
 ├── 📄 main.nf                           # Entry point pipeline
 ├── ⚙️ nextflow.config                    # Parameter, profile, resource
+├── 🚀 run_hpc.sh                        # Submit ke SLURM (produksi & benchmark)
 │
 ├── workflows/
-│   └── pangenome.nf                     # Orkestrator utama (4 tahap)
+│   └── pangenome.nf                     # Orkestrator utama (5 subworkflow)
 │
 ├── subworkflows/local/
 │   ├── validate_input.nf                # Parsing & validasi samplesheet
@@ -439,17 +455,17 @@ nf-pangenome-elaise/
 │   │   └── quast.nf                     # QUAST — output laporan kualitas
 │   ├── graph_construction/
 │   │   ├── minigraph.nf                 # SV-level graph
-│   │   └── cactus_minigraph.nf          # Base-level graph (Docker container)
+│   │   └── cactus_minigraph.nf          # Base-level graph (Docker; native binary di HPC)
 │   └── graph_analysis/
 │       ├── odgi.nf                      # odgi stats + odgi viz (1D layout)
-│       └── vg_stats.nf                  # vg stats — node, edge, length
+│       └── vg_stats.nf                  # vg stats — node, edge count
 │
 ├── bin/
-│   └── extract_core_var.sh              # Bash script: core vs variable sequences
+│   └── recommend_resources.sh           # Rekomendasi alokasi CPU/RAM dari trace.tsv
 │
 ├── conf/
 │   ├── test.config                      # Config laptop (2 CPU, 4GB RAM)
-│   └── hpc.config                       # Config HPC Mahameru (SLURM, 128 CPU)
+│   └── hpc.config                       # Config HPC Mahameru (SLURM, 32 core / 64GB)
 │
 ├── data/                                # ← TARUH DATA ASSEMBLY DI SINI
 │   ├── EG11/                            #   Assembly referensi (kromosom-level)

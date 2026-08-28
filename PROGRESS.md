@@ -1,5 +1,5 @@
 # 📋 Progress Skripsi — nf-pangenome-elaise
-> Terakhir diupdate: **2026-07-11**
+> Terakhir diupdate: **2026-08-28**
 > **Deadline Analisis: November 2026 | Komprehensif: Desember 2026**
 
 ---
@@ -8,20 +8,22 @@
 
 ```
 Infrastructure  ████████████████████  100%
-Tool Install    ████████████████████  100%  ✅ SEMUA (termasuk Cactus Docker)
-Preprocessing   ████████████████████  100%  ✅ Tested dengan sample data
-QC (QUAST)      ████████████████████  100%  ✅ Tested dengan sample data
-Graph Construct ████████████████████  100%  ✅ Minigraph + Cactus BERHASIL
-Graph Analysis  ████████████████████  100%  ✅ odgi stats/viz + vg stats BERHASIL
-HPC/Slurm       ████████░░░░░░░░░░░░   40%  (config ada, belum implement di Mahameru)
-Testing & Eval  ██████████████░░░░░░   65%  ✅ Test data OK, belum full data
-Penulisan BAB   ██░░░░░░░░░░░░░░░░░░   10%  (metodologi draft)
+Tool Install    ████████████████████  100%  ✅ SEMUA (Cactus: native binary di HPC)
+Preprocessing   ████████████████████  100%  ✅ Data produksi (3 assembly asli)
+QC (QUAST)      ████████████████████  100%  ✅ Data produksi (3 assembly asli)
+Graph Construct ████████████████████  100%  ✅ Minigraph + Cactus BERHASIL (produksi)
+Graph Analysis  ████████████████████  100%  ✅ odgi stats/viz + vg stats, 7 titik ukuran
+HPC/Slurm       ████████████████████  100%  ✅ Deployment & eksekusi produksi selesai
+Resource Bench  ████████████████████  100%  ✅ 7 titik ukuran x 3 pengulangan, modul rekomendasi jadi
+Penulisan BAB   ██████████████████░░   90%  ✅ BAB I-IV selesai, BAB V & Abstrak menyusul
 ─────────────────────────────────────────────
-TOTAL ANALISIS  ███████████░░░░░░░░░  ~55%
+TOTAL ANALISIS  ██████████████████░░  ~90%
 ```
 
-> **Catatan:** Naik dari ~40% → ~55% setelah pipeline berhasil dijalankan end-to-end
-> dengan sample data (3 assembly subset). Semua 8 step completed tanpa error.
+> **Catatan:** Naik dari ~55% (Juli) setelah eksekusi produksi penuh berhasil di HPC
+> Mahameru (32 core/64GB), migrasi Cactus dari Singularity ke native binary install,
+> rangkaian benchmark resource-aware selesai untuk seluruh titik ukuran, dan BAB IV
+> selesai ditulis lengkap (4.1–4.6, mengikuti kerangka Evolutionary Prototyping).
 
 ---
 
@@ -51,12 +53,15 @@ TOTAL ANALISIS  ███████████░░░░░░░░░  ~5
 | odgi | v0.9.4 | `conda install -c bioconda` | ✅ |
 | vg | v1.73.0 | `conda install -c bioconda` | ✅ |
 | samtools | 1.24 | `conda install -c bioconda` | ✅ |
-| cactus-minigraph | v2.9.0 | Docker image (1.07 GB) | ✅ |
-| Docker | v29.1.3 | apt | ✅ |
+| cactus-minigraph | v2.9.0 | Docker image (lokal) / **native binary di HPC** (`~/cactus-bin-v2.9.0/`) | ✅ |
+| Docker | v29.1.3 | apt (lokal saja, tidak dipakai di HPC) | ✅ |
 
 > **Conda environment:** `pangenome` → `~/miniforge3/envs/pangenome/` (2.4 GB)
 > **Cara aktivasi:** `conda activate pangenome`
-> **Nextflow profile:** `-profile conda` (sudah dikonfigurasi di `nextflow.config`)
+> **Nextflow profile lokal:** `-profile conda` — **profile HPC:** `-profile conda,slurm`
+> **Catatan migrasi:** Cactus di HPC awalnya dicoba via Singularity, tapi gagal konsisten
+> di sejumlah node (galat `unknown userid`, akibat cache SSSD/LDAP). Solusi permanen:
+> instalasi biner native (bukan container) — lihat `conf/hpc.config`.
 
 ---
 
@@ -79,11 +84,12 @@ TOTAL ANALISIS  ███████████░░░░░░░░░  ~5
 - [x] `subworkflows/local/graph_analysis.nf` (odgi + vg stats)
 
 ### Workflow Utama
-- [x] `workflows/pangenome.nf` — 5 tahap sesuai proposal
+- [x] `workflows/pangenome.nf` — 5 subworkflow (variant calling sudah dihapus total dari scope)
 
 ### Scripts & Dokumentasi
-- [x] `bin/extract_core_var.sh` — core vs variable sequences
-- [x] `tests/subset_real_data.py` — subset genome asli
+- [x] `bin/recommend_resources.sh` — rekomendasi alokasi CPU/RAM dari `trace.tsv`
+- [x] `run_hpc.sh` — submit SLURM, generik untuk run produksi & benchmark
+- [x] `tests/subset_real_data.py` — subset genome asli (fixture test lama)
 - [x] `tests/test_data/` — 3 assembly subset (EGPMv6, EG01, ASM167249v1)
 - [x] `docs/NEXTFLOW_PRINCIPLES.md`
 - [x] README.md (Bahasa Indonesia, alur sesuai proposal)
@@ -124,76 +130,50 @@ steps: 5
 
 ---
 
-## 🔄 Analisis — Tahap 1: Preprocessing (Data Asli)
+## ✅ Analisis Data Produksi (3 Assembly Asli: EG11, EGPMv6, Eg-DCM)
 
-- [x] Ekstrak semua 5 zip genome dari DATA SKRIPSI
-  - [x] EG01 — sudah diekstrak (150M .fna)
-  - [x] ASM167249v1 — sudah diekstrak (503M .fna)
-  - [x] EGPMv6 — sudah diekstrak (1.2G .fna)
-  - [x] EG11 — sudah diekstrak (1.8G .fna)
-  - [x] Eg-DCM — sudah diekstrak (1.5G .fna)
-- [ ] Rename header FASTA ke PanSN-spec (`sample#hap#seq`)
-- [ ] Buat samplesheet.csv dari 5 assembly asli (path ke .fna)
+> Cakupan riset difinalkan ke **3 assembly** (bukan 5) atas arahan dosen pembimbing —
+> lebih sedikit assembly berarti lebih sedikit node graph, sehingga eksekusi tidak
+> memakan waktu berlebihan pada klaster HPC bersama.
 
----
+- [x] Header FASTA di-rename ke PanSN-spec, `samplesheet.csv` produksi dibuat
+- [x] QUAST dijalankan pada seluruh 3 assembly asli — N50, jumlah contig, GC% tercatat
+- [x] Minigraph + Cactus-Minigraph dijalankan pada data produksi penuh — **BERHASIL, exit 0**
+- [x] ODGI stats/viz + VG stats dijalankan — statistik graph final tercatat
+  (lihat `pangenome_results/analysis/pangenome.stats.yaml`)
+- [x] Eksekusi produksi penuh di HPC Mahameru (32 core / 64GB, partisi `medium-small`)
+- [x] Rangkaian benchmark resource-aware pada 7 titik ukuran data (progresif, hingga
+  genom penuh), masing-masing 3x pengulangan independen (mode `noresume`)
+- [x] Modul `bin/recommend_resources.sh` — rekomendasi alokasi CPU/RAM dari trace.tsv real
+- [x] Instrumentasi `-with-report`/`-with-timeline`/`-with-trace` aktif di setiap eksekusi
 
-## 🔄 Analisis — Tahap 2: Quality Control (QUAST)
+**Temuan utama (ringkas):**
+- Peak RAM proporsional terhadap ukuran data (0,45GB → 61,6GB); Peak %CPU **tidak**
+  proporsional (baru efektif memanfaatkan multi-core di skala genom penuh)
+- Rekomendasi sistem untuk eksekusi produksi berikutnya: **8 core, 74GB** (vs alokasi
+  aktual 32 core/64GB) — penghematan ~75% CPU, koreksi +15,6% RAM untuk margin aman
 
-- [x] Install QUAST v5.3.0 ✅
-- [x] Test QUAST pada sample data ✅
-- [ ] Jalankan QUAST pada 5 assembly asli
-- [ ] Catat: N50, jumlah contig, total bp, GC% per assembly
-- [ ] Tentukan backbone referensi (N50 tertinggi / kromosom-level)
-
----
-
-## 🔄 Analisis — Tahap 3: Konstruksi Pangenome Graph (Minigraph-Cactus)
-
-- [x] Install minigraph 0.21-r606 ✅
-- [x] Install cactus-minigraph via Docker (v2.9.0, 1.07 GB) ✅
-- [x] Jalankan minigraph dengan data test_data subset ✅
-- [x] Jalankan cactus-minigraph (via Docker) dengan data test_data subset ✅
-- [x] Verifikasi output GFA valid ✅
-- [ ] Jalankan dengan data asli (5 assembly)
-
----
-
-## 🔄 Analisis — Tahap 4: Evaluasi & Statistik
-
-- [x] Install odgi v0.9.4 ✅
-- [x] Install vg v1.73.0 ✅
-- [x] Jalankan `odgi stats` → node, edge, path count ✅ (sample data)
-- [x] Jalankan `vg stats` → statistik graph ✅ (sample data)
-- [x] Jalankan `odgi viz` → visualisasi 1D ✅ (sample data)
-- [ ] Jalankan `bin/extract_core_var.sh` → core & variable sequences
-- [ ] Jalankan semua dengan data asli (5 assembly)
-
----
-
-## 🔄 Tahap 5: Implementasi & Evaluasi HPC Mahameru
-
-- [ ] Akses HPC Mahameru BRIN
-- [ ] Upload data dan pipeline ke HPC
-- [ ] Jalankan pipeline dengan profile `slurm`
-- [ ] Ukur runtime per tahap (dari `trace.tsv`)
-- [ ] Test `auto-resume` (simulasi kegagalan)
-- [ ] Dokumentasi: `report.html`, `timeline.html`, `dag.html`
+### Bug Fix Applied:
+- **ODGI assertion error** (`number < 2^63`): Cactus GFA node ID terlalu besar untuk odgi.
+  Fix: tambah `vg ids -s` untuk compact node ID sebelum `odgi build`.
+  File: `modules/local/graph_analysis/odgi.nf`
+- **Singularity gagal di HPC** (`unknown userid`): akar masalah cache SSSD/LDAP tidak
+  konsisten per-node. Fix permanen: migrasi Cactus ke instalasi biner native.
 
 ---
 
 ## 📝 Penulisan Skripsi
 
-- [ ] BAB I — Pendahuluan (dari proposal)
-- [ ] BAB II — Landasan Teori (dari proposal)
-- [ ] BAB III — Metodologi (update sesuai implementasi nyata)
-- [ ] BAB IV — Hasil & Pembahasan
-  - [ ] Tabel QC QUAST per assembly
-  - [ ] Statistik pangenome (node, edge, path)
-  - [ ] Tabel core vs variable sequences
-  - [ ] Grafik timeline & runtime
-  - [ ] Perbandingan konfigurasi sumber daya
-- [ ] BAB V — Kesimpulan & Saran
-- [ ] Daftar Pustaka
+- [x] BAB I — Pendahuluan
+- [x] BAB II — Landasan Teori
+- [x] BAB III — Metodologi (Evolutionary Prototyping, desain eksperimen benchmark)
+- [x] BAB IV — Hasil & Pembahasan (4.1–4.6, dikunci ke 6 tahap Evolutionary Prototyping)
+  - [x] Tabel QC QUAST, statistik pangenome (node/edge/path/step)
+  - [x] Grafik skalabilitas RAM/CPU/durasi vs ukuran data (rata-rata 3x eksekusi)
+  - [x] Rekomendasi & estimasi penghematan alokasi sumber daya
+- [ ] BAB V — Kesimpulan & Saran (masih draf lama, perlu ditulis ulang)
+- [ ] Abstrak — perlu angka final (rekomendasi 8 core/74GB, dll.)
+- [ ] Daftar Pustaka — cek kelengkapan sitasi
 
 ---
 
@@ -216,6 +196,11 @@ steps: 5
 | 2026-07-11 | **Fix ODGI assertion error**: tambah `vg ids -s` di `odgi.nf` |
 | 2026-07-11 | **🎉 Pipeline test run 100% berhasil** (8/8 step, exit 0) |
 | 2026-08-19 | **Hapus Variant Calling** — module, subworkflow, param `call_variants` dihapus total dari pipeline |
+| 2026-08-19 | **Pivot fokus riset ke resource-aware** — dari sekadar "pipeline otomatis" menjadi "pipeline yang merekomendasikan alokasi sumber daya optimal", dipicu temuan kesenjangan alokasi vs penggunaan aktual (61GB terpakai dari 64GB, 7 core efektif dari 32 core) |
+| 2026-08-20 | **Migrasi Cactus dari Singularity ke native binary install** di HPC — mengatasi galat `unknown userid` (cache SSSD/LDAP tidak konsisten) |
+| 2026-08-24 | Tambah mode `noresume` di `run_hpc.sh` + `bin/recommend_resources.sh` — modul rekomendasi alokasi CPU/RAM dari trace.tsv |
+| 2026-08-20 s.d. 08-27 | Eksekusi produksi penuh & rangkaian benchmark resource-aware — 7 titik ukuran data, masing-masing 3x pengulangan independen — **selesai seluruhnya** |
+| 2026-08-28 | **BAB IV selesai ditulis lengkap** (4.1–4.6), struktur dikunci ke 6 tahap Evolutionary Prototyping |
 
 ---
 
@@ -225,8 +210,7 @@ steps: 5
 |-------|--------|--------|
 | Juni 2026 | ✅ Setup repo, kode pipeline, install tools | ✅ SELESAI |
 | Juli 2026 | ✅ Setup sistem baru + test pipeline sample data | ✅ SELESAI (11 Juli) |
-| Agustus 2026 | QC QUAST + Minigraph-Cactus (data asli) | ⏳ |
-| September 2026 | Graph analysis + evaluasi statistik | ⏳ |
-| Oktober 2026 | Implementasi & benchmarking di HPC Mahameru | ⏳ |
-| November 2026 | **DEADLINE ANALISIS** + draft BAB IV | ⏳ |
+| Agustus 2026 | QC QUAST + Minigraph-Cactus (data asli), deployment & benchmark di HPC, penulisan BAB IV | ✅ SELESAI |
+| September–Oktober 2026 | *(dipercepat — sudah tercapai di Agustus)* | ✅ |
+| November 2026 | **DEADLINE ANALISIS** — BAB V, Abstrak, finalisasi naskah lengkap | ⏳ |
 | Desember 2026 | **KOMPREHENSIF** | ⏳ |
