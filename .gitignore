@@ -8,6 +8,7 @@
 # ── NEXTFLOW RUNTIME ─────────────────────────────────────────────────────────
 .nextflow/
 .nextflow.log*
+.nextflow*
 work/
 results/
 results_*/
@@ -65,7 +66,6 @@ DATA SKRIPSI/
 PROPOSAL SKRIPSI/
 ProposalSkripsi/
 percakapandosen/
-results/
 pangenome_results/
 skripsi/
 result_all/
@@ -99,6 +99,7 @@ Thumbs.db
 *.tmp
 *.temp
 slurm-*.out
+slurm-*.err
 sbatch-*.sh
 nohup.out
 
@@ -106,6 +107,20 @@ nohup.out
 seqfile.txt
 install_tools.sh
 Browser pipeline info/
+
+# ── INSTALASI KOMPONEN (bila dipasang/diunduh di dalam folder repo) ─────────
+/nextflow
+miniforge*.sh
+Miniforge3-*.sh
+cactus-bin-*/
+venv-cactus*/
+*.sif
+
+# ── CADANGAN & BERKAS KUNCI DOKUMEN ──────────────────────────────────────────
+*.bak
+.bak_*
+.~lock.*#
+~$*
 
 # ── AI ASSISTANT & CLAUDE CODE ───────────────────────────────────────────────
 CLAUDE.md

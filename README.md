@@ -9,7 +9,7 @@
 ╚═╝  ╚═══╝╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝
 ```
 
-### `nf-pangenome-elaise`
+### `nf-pangenome-elaeis`
 
 **Pipeline Nextflow DSL2 untuk konstruksi pangenome graph *Elaeis guineensis* (Kelapa Sawit)**  
 **menggunakan Minigraph-Cactus pada infrastruktur HPC**
@@ -218,22 +218,42 @@ ssh <username>@login2.hpc.brin.go.id
 
 | Kebutuhan | Versi | Catatan |
 |-----------|-------|---------|
-| [Nextflow](https://www.nextflow.io/) | ≥ 23.04.0 | Wajib |
-| Java | ≥ 11 | Wajib |
-| [Conda/Mamba](https://github.com/conda-forge/miniforge) | — | Untuk install tools lokal |
-| Docker | — | Untuk cactus-minigraph |
-| Singularity | — | Untuk HPC |
+| [Nextflow](https://www.nextflow.io/) | ≥ 23.04.0 (teruji 26.04.6) | dipasang di `~/bin` |
+| Java | 21 (teruji 21.0.4-tem) | dipasang lewat [SDKMAN](https://sdkman.io/) |
+| [Miniforge](https://github.com/conda-forge/miniforge) (Conda + Mamba) | — | dipasang di `~/miniforge3`, environment `pangenome` |
+| [Cactus](https://github.com/ComparativeGenomicsToolkit/cactus) | 2.9.0 | HPC: biner *native* di `~/cactus-bin-v2.9.0`; laptop: Docker |
+| SLURM | — | tersedia di HPC Mahameru |
 
-#### Step 1 — Install Nextflow
+> 💡 Semua komponen dipasang di direktori akun (`~/`), jadi **tidak perlu akses root** — cukup akun HPC bertipe *student*.
+> Lokasi di atas adalah lokasi yang dibaca `run_hpc.sh` dan `conf/hpc.config`. Kalau dipasang di tempat lain, sesuaikan kedua berkas itu.
+
+#### Step 1 — Clone Repository
+
+```bash
+git clone https://github.com/DoniArmanS/nf-pangenome-elaeis.git
+cd nf-pangenome-elaeis
+```
+
+#### Step 2 — Pasang Komponen (sekali saja, di login node)
+
+**2a. Java 21 (SDKMAN)**
+
+```bash
+curl -s https://get.sdkman.io | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+sdk install java 21.0.4-tem        # atau versi 21 lain: sdk list java
+java -version
+```
+
+**2b. Nextflow**
 
 ```bash
 curl -s https://get.nextflow.io | bash
-mkdir -p ~/.local/bin && mv nextflow ~/.local/bin/
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
-nextflow -version
+mkdir -p ~/bin && mv nextflow ~/bin/
+~/bin/nextflow -version
 ```
 
-#### Step 2 — Install Tools via Conda
+**2c. Tools bioinformatika (Conda)**
 
 ```bash
 # Install Miniforge (conda + mamba)
@@ -251,85 +271,111 @@ conda activate pangenome
 mamba install -y -c bioconda -c conda-forge seqkit quast minigraph odgi vg
 ```
 
-#### Step 3 — Install Cactus
+**2d. Cactus 2.9.0**
+
+Di **HPC Mahameru**, Cactus dipasang sebagai **biner native** (bukan container). Container Singularity gagal di sejumlah node dengan galat `unknown userid` (cache SSSD/LDAP yang tidak konsisten), dan Docker tidak diizinkan di HPC. Langkah berikut mengikuti `BIN-INSTALL.md` resmi Cactus:
 
 ```bash
-# Untuk profile local/docker/conda: Cactus tersedia via Docker image (~1GB)
-sudo usermod -aG docker $USER   # pertama kali saja, lalu restart/logout
+cd ~
+wget https://github.com/ComparativeGenomicsToolkit/cactus/releases/download/v2.9.0/cactus-bin-v2.9.0.tar.gz
+tar -xzf cactus-bin-v2.9.0.tar.gz
+cd cactus-bin-v2.9.0
+virtualenv -p python3 venv-cactus-v2.9.0
+printf "export PATH=$(pwd)/bin:\$PATH\nexport PYTHONPATH=$(pwd)/lib:\$PYTHONPATH\n" >> venv-cactus-v2.9.0/bin/activate
+source venv-cactus-v2.9.0/bin/activate
+python3 -m pip install -U setuptools pip wheel
+python3 -m pip install -U .
+python3 -m pip install -U -r ./toil-requirement.txt
+deactivate
+```
+
+`conf/hpc.config` mengaktifkan environment ini otomatis lewat `beforeScript`, jadi tidak perlu diaktifkan manual saat menjalankan pipeline.
+
+Di **laptop** (profile `local`/`docker`/`conda`), Cactus cukup memakai image Docker:
+
+```bash
+sudo usermod -aG docker $USER   # pertama kali saja, lalu logout/login
 docker pull quay.io/comparative-genomics-toolkit/cactus:v2.9.0
 ```
 
-> ⚠️ **Khusus HPC Mahameru:** container Singularity untuk Cactus gagal di sejumlah node HPC (galat `unknown userid`, akibat cache SSSD/LDAP yang tidak konsisten). Solusinya, profile `slurm` menjalankan Cactus sebagai **instalasi biner native** (bukan container) — lihat `conf/hpc.config` (`beforeScript` mengaktifkan virtual environment di `~/cactus-bin-v2.9.0/`).
+#### Step 3 — Siapkan Data & Samplesheet
 
-#### Step 4 — Clone Repository
+Data yang dipakai adalah 3 assembly *Elaeis guineensis* dari NCBI:
+
+| Sample | Kultivar | Aksesi NCBI | Peran |
+|--------|----------|-------------|-------|
+| EG11 | Tenera | [GCA_000442705.2](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000442705.2/) | backbone referensi |
+| EGPMv6 | AVROS | [GCA_015461965.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_015461965.1/) | — |
+| Eg-DCM | DCM | [GCA_966131455.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_966131455.1/) | — |
+
+Unduh lewat halaman NCBI di atas, atau dengan [NCBI Datasets CLI](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/command-line-tools/download-and-install/) (`mamba install -c conda-forge ncbi-datasets-cli`):
 
 ```bash
-git clone https://github.com/DoniArmanS/nf-pangenome-elaise.git
-cd nf-pangenome-elaise
+for x in EG11:GCA_000442705.2 EGPMv6:GCA_015461965.1 Eg-DCM:GCA_966131455.1; do
+  s=${x%%:*}; acc=${x##*:}
+  datasets download genome accession $acc --include genome --filename $s.zip
+  unzip -o $s.zip -d data/$s && rm $s.zip
+done
 ```
 
-#### Step 5 — Siapkan Data
-
-Taruh file FASTA assembly ke folder `data/`:
-
-```
-data/
-├── EG11/           ← taruh EG11.fa di sini (referensi backbone)
-├── EGPMv6/         ← taruh EGPMv6.fa di sini
-└── Eg-DCM/         ← taruh EgDCM.fa di sini
-```
-
-Lalu buat file `samplesheet.csv`:
+Berkas `samplesheet.csv` di repo sudah menunjuk ke lokasi hasil unduhan tersebut:
 
 ```csv
 sample,fasta,cultivar
-EG11,data/EG11/EG11.fa,Tenera
-EGPMv6,data/EGPMv6/EGPMv6.fa,AVROS
-Eg-DCM,data/Eg-DCM/EgDCM.fa,DCM
+EG11,data/EG11/ncbi_dataset/data/GCA_000442705.2/GCA_000442705.2_EG11_genomic.fna,Tenera
+EGPMv6,data/EGPMv6/ncbi_dataset/data/GCA_015461965.1/GCA_015461965.1_EGPMv6_genomic.fna,AVROS
+Eg-DCM,data/Eg-DCM/ncbi_dataset/data/GCA_966131455.1/GCA_966131455.1_Eg-DCM_assembly_v1_genomic.fna,DCM
 ```
 
-> ⚠️ Nilai `sample` untuk backbone referensi **harus sama persis** dengan `--reference_name`
+> ⚠️ Nilai `sample` untuk backbone referensi **harus sama persis** dengan `--reference_name` (default: `EG11`)
 
-#### Step 6 — Jalankan Pipeline
+#### Step 4 — Jalankan Pipeline
 
 ```bash
 # ═══════════════════════════════════════════════════
-# Opsi A: Test lokal (data subset kecil, di laptop)
+# HPC Mahameru (SLURM + Cactus native) — DIREKOMENDASIKAN
 # ═══════════════════════════════════════════════════
-conda activate pangenome
-nextflow run main.nf -profile test,conda
-
-# ═══════════════════════════════════════════════════
-# Opsi B: Data asli di laptop
-# ═══════════════════════════════════════════════════
-nextflow run main.nf \
-    -profile conda \
-    --input samplesheet.csv \
-    --reference_name EGPMv6 \
-    --outdir results/
-
-# ═══════════════════════════════════════════════════
-# Opsi C: HPC Mahameru (SLURM + Cactus native install)
-# ═══════════════════════════════════════════════════
-# Direkomendasikan: submit lewat run_hpc.sh (sudah membawa -with-report/
-# -with-timeline/-with-trace dan alokasi #SBATCH 32 core / 64GB)
-sbatch run_hpc.sh                              # run produksi penuh (samplesheet.csv → results/)
-sbatch run_hpc.sh samplesheet_lain.csv out_lain/   # override input/output
+# run_hpc.sh sudah membawa -with-report/-with-timeline/-with-trace
+# dan alokasi #SBATCH 32 core / 64 GB / 72 jam
+sbatch run_hpc.sh                                    # samplesheet.csv → results/
+sbatch run_hpc.sh samplesheet_lain.csv hasil_lain/   # masukan & keluaran lain
+sbatch run_hpc.sh samplesheet.csv results/ noresume  # ulang dari awal tanpa cache
 
 # Atau manual:
 nextflow run main.nf \
     -profile conda,slurm \
-    --input /path/to/samplesheet.csv \
-    --reference_name EGPMv6 \
-    --outdir /scratch/results/ \
+    --input samplesheet.csv \
+    --reference_name EG11 \
+    --outdir results/ \
     -resume
+
+# ═══════════════════════════════════════════════════
+# Laptop
+# ═══════════════════════════════════════════════════
+conda activate pangenome
+nextflow run main.nf -profile test,conda          # data subset kecil
+
+nextflow run main.nf \
+    -profile conda \
+    --input samplesheet.csv \
+    --reference_name EG11 \
+    --outdir results/
 ```
+
+#### Step 5 — Hitung Rekomendasi Alokasi
+
+```bash
+bin/recommend_resources.sh results/pipeline_info/trace.tsv
+```
+
+Keluarannya berupa `--cpus-per-task=N` dan `--mem=NG` yang bisa langsung ditulis ke baris `#SBATCH` di `run_hpc.sh` untuk eksekusi berikutnya.
 
 #### Resume Setelah Error
 
 ```bash
 # Nextflow otomatis melanjutkan dari proses yang gagal
-nextflow run main.nf -profile test,conda -resume
+sbatch run_hpc.sh          # di HPC: -resume aktif secara bawaan
+nextflow run main.nf -profile test,conda -resume   # di laptop
 ```
 
 ---
@@ -348,21 +394,12 @@ mkdir -p data/Nipponbare data/IR64 data/Kasalath
 # Taruh file .fa / .fna / .fasta ke masing-masing folder
 ```
 
-#### 2. Rename Header FASTA ke PanSN-spec
+#### 2. Periksa Nama Sekuens
 
-Semua header FASTA **wajib** mengikuti format [PanSN-spec](https://github.com/pangenome/PanSN-spec):
+Header FASTA **tidak perlu diubah** selama nama sekuens antar-assembly tidak kembar — misalnya nomor aksesi NCBI seperti `CM002081.2` dan `GK000076.1`. Nama *path* pada graf diberikan otomatis oleh Cactus berdasarkan nama `sample` di samplesheet.
 
-```
->{sample}#{haplotype}#{nama_sekuens}
+Kalau ada nama yang kembar (misalnya `Chr01` di semua assembly), ubah header ke format [PanSN-spec](https://github.com/pangenome/PanSN-spec) `>{sample}#{haplotype}#{nama_sekuens}`:
 
-# Contoh kelapa sawit:
->EGPMv6#1#GK000076.1
-
-# Contoh padi:
->Nipponbare#1#Chr01
-```
-
-Script untuk rename header:
 ```bash
 # Contoh: rename header untuk sample "Nipponbare"
 sed -i 's/^>\(.*\)/>Nipponbare#1#\1/' data/Nipponbare/Nipponbare.fa
@@ -391,9 +428,9 @@ nextflow run main.nf \
 
 > 💡 **Tips:**
 > - `--reference_name` harus diisi dengan assembly **terbaik** (level kromosom, N50 tertinggi)
-> - Assembly minimum yang dibutuhkan: **3** (1 referensi + 2 non-referensi)
+> - Assembly minimum yang dibutuhkan: **2** (1 referensi + 1 atau lebih non-referensi)
 > - Nama sample di samplesheet harus **unik** dan **tanpa spasi/karakter khusus**
-> - Jangan lupa rename header FASTA ke PanSN-spec **sebelum** menjalankan pipeline
+> - Pastikan nama sekuens antar-assembly **tidak kembar** (lihat langkah 2)
 
 ---
 
@@ -413,6 +450,8 @@ nextflow run main.nf \
 | `--max_cpus` | `8` | Batas CPU maksimum |
 | `--max_time` | `24.h` | Batas waktu eksekusi |
 
+> Nilai `max_*` di atas berlaku untuk profil lokal. Profil `slurm` (`conf/hpc.config`) menaikkannya menjadi **32 CPU, 64 GB, 72 jam**.
+
 ---
 
 ## 🖥️ Profile Eksekusi
@@ -431,11 +470,14 @@ nextflow run main.nf \
 ## 🗂️ Struktur Project
 
 ```
-nf-pangenome-elaise/
+nf-pangenome-elaeis/
 │
 ├── 📄 main.nf                           # Entry point pipeline
 ├── ⚙️ nextflow.config                    # Parameter, profile, resource
+├── 📋 samplesheet.csv                   # 3 assembly: EG11, EGPMv6, Eg-DCM
 ├── 🚀 run_hpc.sh                        # Submit ke SLURM (produksi & benchmark)
+├── ✂️ subset_chromosome1.py              # Potong kromosom 1–16 untuk data uji benchmark
+├── 🧪 run_test.sh                       # Uji cepat dengan data subset
 │
 ├── workflows/
 │   └── pangenome.nf                     # Orkestrator utama (5 subworkflow)
@@ -475,7 +517,7 @@ nf-pangenome-elaise/
 ├── tests/
 │   ├── subset_real_data.py              # Buat subset dari genome asli
 │   └── test_data/                       # Subset kecil (masuk git)
-│       ├── EGPMv6.fa, EG01.fa, ASM167249v1.fa
+│       ├── EG11.fa, EGPMv6.fa, EG01.fa, ASM167249v1.fa
 │       └── samplesheet.csv
 │
 ├── 📊 PROGRESS.md                       # Checklist progress per tahap
